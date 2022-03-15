@@ -59,7 +59,43 @@ subject_nested = NestedTermsFacet(
     value_labels=SubjectsLabels()
 )
 
+#
+# MSDLIVE CHANGE BEGIN - renamed subjects facet to Keywords and adding custom metadata
+#  
 subject = TermsFacet(
     field='metadata.subjects.subject.keyword',
-    label=_('Subjects'),
+    label=_('Keywords'),
 )
+
+msdlive_project = TermsFacet(
+    field='metadata.msdlive_projects.project.keyword',
+    label=_('Project'),
+)
+
+msdlive_sector = TermsFacet(
+    field='metadata.msdlive_sectors.sector.keyword',
+    label=_('Sectors and Systems'),
+)
+
+msdlive_scenario = TermsFacet(
+    field='metadata.msdlive_scenarios.scenario.keyword',
+    label=_('Scenario'),
+)
+
+msdlive_temporal = TermsFacet(
+    field='metadata.msdlive_temporals.resolution.keyword',
+    label=_('Temporal Resolution'),
+)
+
+msdlive_spatial = TermsFacet(
+    field='metadata.msdlive_spatials.resolution.keyword',
+    label=_('Spatial Structure'),
+)
+
+msdlive_model = TermsFacet(
+    field='metadata.msdlive_models.model.keyword',
+    label=_('Model'),
+)
+#
+# MSDLIVE CHANGE END
+#  

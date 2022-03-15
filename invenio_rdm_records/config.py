@@ -339,6 +339,50 @@ RDM_FACETS = {
             'field': 'subjects.subject',
         }
     },
+
+#
+# MSDLIVE CHANGE BEGIN - adding custom metadata
+#    
+    'msdlive_project': {
+        'facet': facets.msdlive_project,
+        'ui': {
+            'field': 'msdlive_projects.project',
+        }
+    },
+    'msdlive_sector': {
+        'facet': facets.msdlive_sector,
+        'ui': {
+            'field': 'msdlive_sectors.sector',
+        }
+    },
+    'msdlive_scenario': {
+        'facet': facets.msdlive_scenario,
+        'ui': {
+            'field': 'msdlive_scenarios.scenario',
+        }
+    },
+    'msdlive_temporal': {
+        'facet': facets.msdlive_temporal,
+        'ui': {
+            'field': 'msdlive_temporals.resolution',
+        }
+    },
+    'msdlive_spatial': {
+        'facet': facets.msdlive_spatial,
+        'ui': {
+            'field': 'msdlive_spatials.resolution',
+        }
+    },
+    'msdlive_model': {
+        'facet': facets.msdlive_model,
+        'ui': {
+            'field': 'msdlive_models.model',
+        }
+    },
+#
+# MSDLIVE CHANGE END
+#   
+
     'subject_nested': {
         'facet': facets.subject_nested,
         'ui': {
