@@ -213,7 +213,7 @@ class TitleSchema(Schema):
 
 #
 # MSDLIVE CHANGE BEGIN - adding custom metadata
-# 
+#
 
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
@@ -235,10 +235,36 @@ class TemporalSchema(Schema):
 
     resolution = SanitizedUnicode()
 
+class SpatialDataTypeSchema(Schema):
+    TYPE_NAMES = [
+        "vector",
+        "raster"
+    ]
+
+    # type = SanitizedUnicode(
+    #     required=True,
+    #     validate=validate.OneOf(
+    #         choices=TYPE_NAMES,
+    #         error=_('Invalid value. Choose one of {NAMES}.')
+    #         .format(NAMES=TYPE_NAMES)
+    #     ),
+    #     error_messages={
+    #         # [] needed to mirror error message above
+    #         "required": [
+    #             _('Invalid value. Choose one of {NAMES}.').format(
+    #                 NAMES=TYPE_NAMES)]
+    #     }
+    # )
+    type = SanitizedUnicode()
+
+    resolution = SanitizedUnicode()
+    units = SanitizedUnicode()
+
 class SpatialSchema(Schema):
     """Schema for the MSD-LIVE spatial resolution"""
 
-    resolution = SanitizedUnicode()
+    # resolution = SanitizedUnicode()
+    data_type = fields.Nested(SpatialDataTypeSchema)
 
 class ModelSchema(Schema):
     """Schema for the MSD-LIVE Model"""
@@ -247,7 +273,7 @@ class ModelSchema(Schema):
 
 #
 # MSDLIVE CHANGE END
-# 
+#
 class DescriptionSchema(Schema):
     """Schema for the additional descriptions."""
 
@@ -451,17 +477,17 @@ class MetadataSchema(Schema):
 
     #
     # MSDLIVE CHANGE BEGIN - adding custom metadata
-    # 
+    #
     msdlive_sectors = fields.List(fields.Nested(SectorSchema))
     msdlive_scenarios = fields.List(fields.Nested(ScenarioSchema))
     msdlive_projects = fields.List(fields.Nested(ProjectSchema))
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
-    msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
+    msdlive_spatials = fields.Nested(SpatialSchema)
     msdlive_models = fields.List(fields.Nested(ModelSchema))
 
     #
     # MSDLIVE CHANGE END
-    # 
+    #
     title = SanitizedUnicode(required=True, validate=validate.Length(min=3))
     additional_titles = fields.List(fields.Nested(TitleSchema))
     publisher = SanitizedUnicode()
