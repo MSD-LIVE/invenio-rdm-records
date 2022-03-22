@@ -241,21 +241,21 @@ class SpatialDataTypeSchema(Schema):
         "raster"
     ]
 
-    # type = SanitizedUnicode(
-    #     required=True,
-    #     validate=validate.OneOf(
-    #         choices=TYPE_NAMES,
-    #         error=_('Invalid value. Choose one of {NAMES}.')
-    #         .format(NAMES=TYPE_NAMES)
-    #     ),
-    #     error_messages={
-    #         # [] needed to mirror error message above
-    #         "required": [
-    #             _('Invalid value. Choose one of {NAMES}.').format(
-    #                 NAMES=TYPE_NAMES)]
-    #     }
-    # )
-    type = SanitizedUnicode()
+    type = SanitizedUnicode(
+        required=True,
+        validate=validate.OneOf(
+            choices=TYPE_NAMES,
+            error=_('Invalid value. Choose one of {NAMES}.')
+            .format(NAMES=TYPE_NAMES)
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [
+                _('Invalid value. Choose one of {NAMES}.').format(
+                    NAMES=TYPE_NAMES)]
+        }
+    )
+    # type = SanitizedUnicode()
 
     resolution = SanitizedUnicode()
     units = SanitizedUnicode()
