@@ -101,6 +101,26 @@
                   "type": "string"
                 }
               }
+            },
+            "horizontal_coord": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "subtype": {
+                  "type": "string"
+                },
+                "coordinates": {
+                  "type": "object",
+                  "properties": {
+                    "name_1": { "type": "string" },
+                    "name_2": { "type": "string" },
+                    "units_1": { "type": "string" },
+                    "units_2": { "type": "string" }
+                  }
+                }
+              }
             }
           }
         },

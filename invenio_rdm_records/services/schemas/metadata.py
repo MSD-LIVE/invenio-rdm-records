@@ -260,11 +260,23 @@ class SpatialDataTypeSchema(Schema):
     resolution = SanitizedUnicode()
     units = SanitizedUnicode()
 
+class SpatialHorizontalCoordSchema(Schema):
+    name_1 = SanitizedUnicode()
+    name_2 = SanitizedUnicode()
+    units_1 = SanitizedUnicode()
+    units_2 = SanitizedUnicode()
+
+class SpatialHorizontalSchema(Schema):
+    type = SanitizedUnicode()
+    subtype = SanitizedUnicode()
+    coordinates = fields.Nested(SpatialHorizontalCoordSchema)
+
 class SpatialSchema(Schema):
     """Schema for the MSD-LIVE spatial resolution"""
 
     # resolution = SanitizedUnicode()
     data_type = fields.Nested(SpatialDataTypeSchema)
+    horizontal_coord = fields.Nested(SpatialHorizontalSchema)
 
 class ModelSchema(Schema):
     """Schema for the MSD-LIVE Model"""
