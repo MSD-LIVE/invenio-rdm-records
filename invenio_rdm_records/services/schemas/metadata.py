@@ -271,12 +271,22 @@ class SpatialHorizontalSchema(Schema):
     subtype = SanitizedUnicode()
     coordinates = fields.Nested(SpatialHorizontalCoordSchema)
 
+class SpatialVerticalCoordSchema(Schema):
+    name = SanitizedUnicode()
+    units = SanitizedUnicode()
+    direction = SanitizedUnicode()
+
+class SpatialVerticalSchema(Schema):
+    type = SanitizedUnicode()
+    coordinate = fields.Nested(SpatialVerticalCoordSchema)
+
 class SpatialSchema(Schema):
     """Schema for the MSD-LIVE spatial resolution"""
 
     # resolution = SanitizedUnicode()
     data_type = fields.Nested(SpatialDataTypeSchema)
     horizontal_coord = fields.Nested(SpatialHorizontalSchema)
+    vertical_coord = fields.Nested(SpatialVerticalSchema)
 
 class ModelSchema(Schema):
     """Schema for the MSD-LIVE Model"""
