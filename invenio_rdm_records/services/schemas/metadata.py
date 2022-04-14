@@ -259,6 +259,7 @@ class SpatialDataTypeSchema(Schema):
 
     resolution = SanitizedUnicode()
     units = SanitizedUnicode()
+    hexbin = fields.Boolean()
 
 class SpatialHorizontalCoordSchema(Schema):
     name_1 = SanitizedUnicode()

@@ -99,6 +99,9 @@
                 },
                 "units": {
                   "type": "string"
+                },
+                "hexbin": {
+                  "type": "boolean"
                 }
               }
             },
