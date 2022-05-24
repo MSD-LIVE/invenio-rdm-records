@@ -1,105 +1,70 @@
-- id: contactperson
+- id: conceptualization
   props:
     datacite: ContactPerson
   title:
-    en: Contact person
-- id: datacollector
+    en: Conceptualization
+- id: datacuration
   props:
-    datacite: DataCollector
+    datacite: ContactPerson
   title:
-    en: Data collector
-- id: datacurator
+    en: Data Curation
+- id: formalanalysis
   props:
-    datacite: DataCurator
+    datacite: ContactPerson
   title:
-    en: Data curator
-- id: datamanager
+    en: Formal Analysis
+- id: fundingacquisition
   props:
-    datacite: DataManager
+    datacite: ContactPerson
   title:
-    en: Data manager
-- id: distributor
+    en: Funding Acquisition
+- id: investigation
   props:
-    datacite: Distributor
+    datacite: ContactPerson
   title:
-    en: Distributor
-- id: editor
+    en: Investigation
+- id: methodology
   props:
-    datacite: Editor
+    datacite: ContactPerson
   title:
-    en: Editor
-- id: hostinginstitution
+    en: Methodology
+- id: projectadministration
   props:
-    datacite: HostingInstitution
+    datacite: ContactPerson
   title:
-    en: Hosting institution
-- id: producer
+    en: Project Administration
+- id: resources
   props:
-    datacite: Producer
+    datacite: ContactPerson
   title:
-    en: Producer
-- id: projectleader
+    en: Resources
+- id: software
   props:
-    datacite: ProjectLeader
+    datacite: ContactPerson
   title:
-    en: Project leader
-- id: projectmanager
+    en: Software
+- id: supervision
   props:
-    datacite: ProjectManager
+    datacite: ContactPerson
   title:
-    en: Project manager
-- id: projectmember
+    en: Supervision
+- id: validation
   props:
-    datacite: ProjectMember
+    datacite: ContactPerson
   title:
-    en: Project member
-- id: registrationagency
+    en: Validation
+- id: visualization
   props:
-    datacite: RegistrationAgency
+    datacite: ContactPerson
   title:
-    en: Registration agency
-- id: registrationauthority
+    en: Visualization
+- id: writingoriginaldraft
   props:
-    datacite: RegistrationAuthority
+    datacite: ContactPerson
   title:
-    en: Registration authority
-- id: relatedperson
+    en: Writing – Original Draft
+- id: writingreviewediting
   props:
-    datacite: RelatedPerson
+    datacite: ContactPerson
   title:
-    en: Related person
-- id: researcher
-  props:
-    datacite: Researcher
-  title:
-    en: Researcher
-- id: researchgroup
-  props:
-    datacite: ResearchGroup
-  title:
-    en: Research group
-- id: rightsholder
-  props:
-    datacite: RightsHolder
-  title:
-    en: Rights holder
-- id: sponsor
-  props:
-    datacite: Sponsor
-  title:
-    en: Sponsor
-- id: supervisor
-  props:
-    datacite: Supervisor
-  title:
-    en: Supervisor
-- id: workpackageleader
-  props:
-    datacite: WorkPackageLeader
-  title:
-    en: Work package leader
-- id: other
-  props:
-    datacite: Other
-  title:
-    en: Other
+    en: Writing – Review and Editing

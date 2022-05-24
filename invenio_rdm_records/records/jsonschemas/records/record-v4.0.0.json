@@ -29,6 +29,88 @@
       "additionalProperties": false,
       "properties": {
 
+
+        "msdlive_sectors": {
+          "description": "Sectors",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "sector": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+        "msdlive_projects": {
+          "description": "Projects",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "project": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+        "msdlive_scenarios": {
+          "description": "Scenarios",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "scenario": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+        "msdlive_temporals": {
+          "description": "Temporal Resolution",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "resolution": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+        "msdlive_spatials": {
+          "description": "Spatial Scale and Resolution",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "resolution": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+        "msdlive_models": {
+          "description": "Model",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "model": {
+                  "type": "string"
+                }
+            }
+          }
+        },
+
+
+
         "resource_type": {"$ref": "local://records/definitions-v2.0.0.json#/resource_type"},
 
         "creators": {
