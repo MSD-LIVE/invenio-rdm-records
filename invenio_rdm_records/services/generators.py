@@ -16,9 +16,9 @@ from itertools import chain
 from elasticsearch_dsl import Q
 from flask_principal import UserNeed
 from invenio_access.permissions import authenticated_user
-from invenio_communities.communities.services.permissions import CommunityNeed
+from invenio_communities.generators import CommunityRoleNeed, CommunityRoles
+from invenio_communities.proxies import current_roles
 from invenio_records_permissions.generators import Generator
-from invenio_requests.resolvers.registry import ResolverRegistry
 
 from invenio_rdm_records.records import RDMDraft
 
@@ -185,30 +185,47 @@ class SubmissionReviewer(Generator):
         # we only expect submission review requests here
         # and as such, we expect the receiver to be a community
         # and the topic to be a record
-        receiver = record.parent.review.receiver
+        request = record.parent.review
+        receiver = request.receiver
         if receiver is not None:
-            if hasattr(receiver, 'get_need'):
-                need = receiver.get_need()
-            else:
-                assert isinstance(receiver, dict)
-                assert "community" in receiver
-
-                # TODO this should be revisited when the community membership
-                #      is implemented, as the community resolver is likely
-                #      subject to change then
-                need = ResolverRegistry.resolve_need(receiver)
-            if need is not None:
-                return [need]
-
+            return receiver.get_needs(ctx=request.type.needs_context)
         return []
 
 
-class CommunityCurator(Generator):
-    """Curators of a community."""
+class CommunityAction(CommunityRoles):
+    """Member of a community with a given action."""
+
+    def __init__(self, action):
+        """Initialize generator."""
+        self._action = action
+
+    def roles(self, **kwargs):
+        """Roles for a given action."""
+        return {r.name for r in current_roles.can(self._action)}
+
+    def communities(self, identity):
+        """Communities that an identity can manage."""
+        roles = self.roles()
+        community_ids = set()
+        for n in identity.provides:
+            if n.method == 'community' and n.role in roles:
+                community_ids.add(n.value)
+        return list(community_ids)
 
     def needs(self, record=None, **kwargs):
         """Set of Needs granting permission."""
         if record is None:
             return []
 
-        return [CommunityNeed(c) for c in record.parent.communities.ids]
+        _needs = set()
+        for c in record.parent.communities.ids:
+            for role in self.roles(**kwargs):
+                _needs.add(CommunityRoleNeed(c, role))
+        return _needs
+
+    def query_filter(self, identity=None, **kwargs):
+        """Filters for current identity as member."""
+        return Q(
+            "terms",
+            **{"parent.communities.ids": self.communities(identity)}
+        )

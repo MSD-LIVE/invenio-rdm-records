@@ -24,8 +24,12 @@ from invenio_records_resources.records.systemfields import FilesField, \
 from invenio_requests.records.api import Request
 from invenio_requests.records.systemfields.relatedrecord import RelatedRecord
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
+from invenio_vocabularies.contrib.awards.api import Award
+from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.records.api import Vocabulary
+
+from invenio_rdm_records.records.systemfields.draft_status import DraftStatus
 
 from . import models
 from .dumpers import EDTFDumperExt, EDTFListDumperExt, GrantTokensDumperExt
@@ -56,7 +60,7 @@ class RDMParent(ParentRecordBase):
 
     review = RelatedRecord(
         Request,
-        keys=['type', 'receiver']
+        keys=['type', 'receiver', 'status'],
     )
 
     communities = CommunitiesField(models.RDMParentCommunity)
@@ -72,7 +76,7 @@ class CommonFieldsMixin:
     parent_record_cls = RDMParent
 
     schema = ConstantField(
-       '$schema', 'local://records/record-v4.0.0.json')
+       '$schema', 'local://records/record-v5.0.0.json')
 
     dumper = ElasticsearchDumper(
         extensions=[
@@ -86,46 +90,60 @@ class CommonFieldsMixin:
         creator_affiliations=PIDNestedListRelation(
             'metadata.creators',
             relation_field='affiliations',
-            attrs=['id', 'name'],
+            keys=['name'],
             pid_field=Affiliation.pid,
             cache_key='affiliations',
         ),
         contributor_affiliations=PIDNestedListRelation(
             'metadata.contributors',
             relation_field='affiliations',
-            attrs=['id', 'name'],
+            keys=['name'],
             pid_field=Affiliation.pid,
             cache_key='affiliations',
         ),
+        funding_funder=PIDListRelation(
+            'metadata.funding',
+            relation_field='funder',
+            keys=['name'],
+            pid_field=Funder.pid,
+            cache_key='funders',
+        ),
+        funding_award=PIDListRelation(
+            'metadata.funding',
+            relation_field='award',
+            keys=['title', 'number', 'identifiers'],
+            pid_field=Award.pid,
+            cache_key='awards',
+        ),
         languages=PIDListRelation(
             'metadata.languages',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('languages'),
             cache_key='languages',
         ),
         resource_type=PIDRelation(
             'metadata.resource_type',
-            attrs=['id', 'title', 'props.type', 'props.subtype'],
+            keys=['title', 'props.type', 'props.subtype'],
             pid_field=Vocabulary.pid.with_type_ctx('resourcetypes'),
             cache_key='resource_type',
             value_check=dict(tags=['depositable']),
         ),
         subjects=PIDListRelation(
             'metadata.subjects',
-            attrs=['id', 'subject', 'scheme'],
+            keys=['subject', 'scheme'],
             pid_field=Subject.pid,
             cache_key='subjects',
         ),
         licenses=PIDListRelation(
             'metadata.rights',
-            attrs=['id', 'title', 'description',
-                   'icon', 'props.url', 'props.scheme'],
+            keys=['title', 'description',
+                  'icon', 'props.url', 'props.scheme'],
             pid_field=Vocabulary.pid.with_type_ctx('licenses'),
             cache_key='licenses',
         ),
         related_identifiers=PIDListRelation(
             'metadata.related_identifiers',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('resourcetypes'),
             cache_key='resource_type',
             relation_field='resource_type',
@@ -133,56 +151,56 @@ class CommonFieldsMixin:
         ),
         title_types=PIDListRelation(
             'metadata.additional_titles',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('titletypes'),
             cache_key='title_type',
             relation_field='type',
         ),
         title_languages=PIDListRelation(
             'metadata.additional_titles',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('languages'),
             cache_key='languages',
             relation_field='lang',
         ),
         creators_role=PIDListRelation(
             'metadata.creators',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('creatorsroles'),
             cache_key='role',
             relation_field='role'
         ),
         contributors_role=PIDListRelation(
             'metadata.contributors',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('contributorsroles'),
             cache_key='role',
             relation_field='role'
         ),
         description_type=PIDListRelation(
             'metadata.additional_descriptions',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('descriptiontypes'),
             cache_key='description_type',
             relation_field='type',
         ),
         description_languages=PIDListRelation(
             'metadata.additional_descriptions',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('languages'),
             cache_key='languages',
             relation_field='lang',
         ),
         date_types=PIDListRelation(
             'metadata.dates',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('datetypes'),
             cache_key='date_types',
             relation_field='type',
         ),
         relation_types=PIDListRelation(
             'metadata.related_identifiers',
-            attrs=['id', 'title'],
+            keys=['title'],
             pid_field=Vocabulary.pid.with_type_ctx('relationtypes'),
             cache_key='relation_types',
             relation_field='relation_type',
@@ -216,7 +234,7 @@ class RDMDraft(CommonFieldsMixin, Draft):
     model_cls = models.RDMDraftMetadata
 
     index = IndexField(
-        "rdmrecords-drafts-draft-v4.0.0", search_alias="rdmrecords"
+        "rdmrecords-drafts-draft-v5.0.0", search_alias="rdmrecords"
     )
 
     files = FilesField(
@@ -227,6 +245,8 @@ class RDMDraft(CommonFieldsMixin, Draft):
     )
 
     has_draft = HasDraftCheckField()
+
+    status = DraftStatus()
 
 
 RDMFileDraft.record_cls = RDMDraft
@@ -248,7 +268,7 @@ class RDMRecord(CommonFieldsMixin, Record):
     model_cls = models.RDMRecordMetadata
 
     index = IndexField(
-        "rdmrecords-records-record-v4.0.0", search_alias="rdmrecords-records"
+        "rdmrecords-records-record-v5.0.0", search_alias="rdmrecords-records"
     )
 
     files = FilesField(
@@ -261,6 +281,8 @@ class RDMRecord(CommonFieldsMixin, Record):
     )
 
     has_draft = HasDraftCheckField(RDMDraft)
+
+    status = DraftStatus()
 
 
 RDMFileRecord.record_cls = RDMRecord

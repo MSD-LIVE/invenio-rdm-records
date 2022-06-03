@@ -11,8 +11,9 @@ import pytest
 from flask_principal import Identity
 from invenio_access.permissions import any_user, authenticated_user
 from invenio_communities import current_communities
-from invenio_communities.communities import CommunityNeed
 from invenio_communities.communities.records.api import Community
+from invenio_communities.generators import CommunityRoleNeed
+from invenio_communities.members.records.api import Member
 from invenio_records_resources.services.errors import PermissionDeniedError
 from invenio_requests import current_requests_service
 from marshmallow.exceptions import ValidationError
@@ -20,18 +21,23 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from invenio_rdm_records.proxies import current_rdm_records
 from invenio_rdm_records.records.api import RDMDraft
+from invenio_rdm_records.records.systemfields.draft_status import DraftStatus
 from invenio_rdm_records.services.errors import ReviewExistsError, \
     ReviewNotFoundError, ReviewStateError
 
 
 def get_community_owner_identity(community):
     """Get the identity for the first owner of the community."""
-    owner_id = community.access.owned_by[0].owner_id
-    identity = Identity(owner_id)
-    identity.provides.add(any_user)
-    identity.provides.add(authenticated_user)
-    identity.provides.add(CommunityNeed(str(community.id)))
-    return identity
+    members = Member.get_members(community.id)
+    for m in members:
+        if m.role == "owner":
+            owner_id = m.user_id
+            identity = Identity(owner_id)
+            identity.provides.add(any_user)
+            identity.provides.add(authenticated_user)
+            identity.provides.add(
+                CommunityRoleNeed(str(community.id), 'owner'))
+            return identity
 
 
 @pytest.fixture()
@@ -47,22 +53,7 @@ def requests_service():
 
 
 @pytest.fixture()
-def minimal_community2():
-    """Data for a minimal community"""
-    return {
-        "id": "rdm",
-        "access": {
-            "visibility": "public",
-        },
-        "metadata": {
-            "title": "RDM",
-            "type": "topic"
-        }
-    }
-
-
-@pytest.fixture()
-def community2(running_app, minimal_community2):
+def community2(running_app, minimal_community2, db):
     """Get the current RDM records service."""
     return current_communities.service.create(
         running_app.superuser_identity,
@@ -71,11 +62,11 @@ def community2(running_app, minimal_community2):
 
 
 @pytest.fixture()
-def draft(minimal_record, community, service, running_app):
+def draft(minimal_record, community, service, running_app, db):
     minimal_record['parent'] = {
         'review': {
             'type': 'community-submission',
-            'receiver': {'community': community.data['uuid']}
+            'receiver': {'community': community.data['id']}
         }
     }
 
@@ -92,11 +83,20 @@ def draft(minimal_record, community, service, running_app):
 def test_simple_flow(draft, running_app, community, service,
                      requests_service):
     """Test basic creation with review."""
+    # check draft status
+    assert draft["status"] == \
+        DraftStatus.review_to_draft_statuses["created"]
+
     # ### Submit draft for review
     req = service.review.submit(
         running_app.superuser_identity, draft.id).to_dict()
-    assert req['status'] == 'open'
+    assert req['status'] == 'submitted'
     assert req['title'] == draft['metadata']['title']
+
+    # check draft status
+    draft = service.read_draft(running_app.superuser_identity, draft.id)
+    assert draft.to_dict()["status"] == \
+        DraftStatus.review_to_draft_statuses["submitted"]
 
     # ### Read request as curator
     # TODO: test that curator can search/read the request
@@ -116,8 +116,9 @@ def test_simple_flow(draft, running_app, community, service,
     record = service.read(running_app.superuser_identity, draft.id).to_dict()
     assert 'review' not in record["parent"]  # Review was desassociated
     assert record["is_published"] is True
-    assert record['parent']['communities']['ids'] == [community.data['uuid']]
-    assert record['parent']['communities']['default'] == community.data['uuid']
+    assert record['parent']['communities']['ids'] == [community.data['id']]
+    assert record['parent']['communities']['default'] == community.data['id']
+    assert record["status"] == "published"
 
     # ### Read draft (which should have been removed)
     with pytest.raises(NoResultFound):
@@ -127,8 +128,9 @@ def test_simple_flow(draft, running_app, community, service,
     draft = service.new_version(
         running_app.superuser_identity, draft.id).to_dict()
     assert 'review' not in draft['parent']
-    assert draft['parent']['communities']['ids'] == [community.data['uuid']]
-    assert draft['parent']['communities']['default'] == community.data['uuid']
+    assert draft['parent']['communities']['ids'] == [community.data['id']]
+    assert draft['parent']['communities']['default'] == community.data['id']
+    assert draft["status"] == "new_version_draft"
 
 
 def test_creation(draft, running_app, community, service, requests_service):
@@ -140,7 +142,7 @@ def test_creation(draft, running_app, community, service, requests_service):
     assert 'id' in parent['review']
     assert parent['review']['type'] == 'community-submission'
     assert parent['review']['receiver'] == {
-        'community': community.data['uuid']}
+        'community': community.data['id']}
     assert '@v' not in parent['review']  # internals should not be exposed
 
     # Read review request (via request service)
@@ -149,9 +151,9 @@ def test_creation(draft, running_app, community, service, requests_service):
     ).to_dict()
 
     assert review['id'] == parent['review']['id']
-    assert review['status'] == 'draft'
+    assert review['status'] == 'created'
     assert review['type'] == 'community-submission'
-    assert review['receiver'] == {'community': community.data['uuid']}
+    assert review['receiver'] == {'community': community.data['id']}
     assert review['created_by'] == {
         'user': str(running_app.superuser_identity.id)
     }
@@ -168,7 +170,7 @@ def test_creation(draft, running_app, community, service, requests_service):
 
 
 def test_create_with_invalid_community(minimal_record, running_app, service):
-    """Test with invalid communities"""
+    """Test with invalid communities."""
     minimal_record['parent'] = {
         'review': {
             'type': 'community-submission',
@@ -201,10 +203,14 @@ def test_create_review_after_draft(
     """Test creation of review after draft was created."""
     # Create draft
     draft = service.create(running_app.superuser_identity, minimal_record)
+    assert draft.to_dict()["status"] == "draft"
+
     # Then create review (you use update, not create for this).
     data = {
         'type': 'community-submission',
-        'receiver': {'community': community.data['uuid']}
+        'receiver': {
+            'community': community.data['id']
+        }
     }
     req = service.review.update(
         running_app.superuser_identity,
@@ -212,9 +218,15 @@ def test_create_review_after_draft(
         data,
         revision_id=draft.data['revision_id']
     ).to_dict()
-    assert req['status'] == 'draft'
+    assert req['status'] == 'created'
     assert req['topic'] == {'record': draft.id}
-    assert req['receiver'] == {'community': community.data['uuid']}
+    assert req['receiver'] == {'community': community.data['id']}
+
+    # check draft status
+    draft = service.read_draft(
+        running_app.superuser_identity, draft.id).to_dict()
+    assert draft["status"] == \
+        DraftStatus.review_to_draft_statuses[req['status']]
 
 
 def test_create_when_already_published(
@@ -228,7 +240,7 @@ def test_create_when_already_published(
     # Then try to create a review (you use update, not create for this).
     data = {
         'type': 'community-submission',
-        'receiver': {'community': community.data['uuid']}
+        'receiver': {'community': community.data['id']}
     }
     with pytest.raises(ReviewStateError):
         service.review.update(
@@ -250,7 +262,7 @@ def test_create_with_new_version(
     # Then try to create a review (you use update, not create for this).
     data = {
         'type': 'community-submission',
-        'receiver': {'community': community.data['uuid']}
+        'receiver': {'community': community.data['id']}
     }
     with pytest.raises(ReviewStateError):
         service.review.update(
@@ -261,13 +273,13 @@ def test_create_with_new_version(
         )
 
 
-def test_update(draft, running_app, community2, service):
+def test_update(draft, running_app, community2, service, db):
     """Change to a different community."""
     previous_id = draft.data['parent']['review']['id']
     # Change to a different community
     data = {
         'type': 'community-submission',
-        'receiver': {'community': community2.data['uuid']}
+        'receiver': {'community': community2.data['id']}
     }
     req = service.review.update(
         running_app.superuser_identity,
@@ -276,9 +288,9 @@ def test_update(draft, running_app, community2, service):
         revision_id=draft.data['revision_id']
     ).to_dict()
     assert req['id'] != previous_id
-    assert req['status'] == 'draft'
+    assert req['status'] == 'created'
     assert req['topic'] == {'record': draft.id}
-    assert req['receiver'] == {'community': community2.data['uuid']}
+    assert req['receiver'] == {'community': community2.data['id']}
 
 
 def test_publish_when_review_exists(draft, running_app, community, service):
@@ -374,7 +386,7 @@ def test_submit_with_validation_errors(
     minimal_record['parent'] = {
         'review': {
             'type': 'community-submission',
-            'receiver': {'community': community.data['uuid']}
+            'receiver': {'community': community.data['id']}
         }
     }
     # Make a mistake in the record.

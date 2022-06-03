@@ -12,7 +12,8 @@ from flask_babelex import lazy_gettext as _
 from invenio_drafts_resources.services.records import RecordService
 from invenio_records_resources.services.uow import RecordCommitOp, \
     RecordIndexOp, unit_of_work
-from invenio_requests import current_registry, current_requests_service
+from invenio_requests import current_request_type_registry, \
+    current_requests_service
 from invenio_requests.resolvers.registry import ResolverRegistry
 from marshmallow import ValidationError
 
@@ -54,7 +55,8 @@ class ReviewService(RecordService):
             )
 
         # Validate the review type (only review requests are valid)
-        type_ = current_registry.lookup(data.pop('type', None), quiet=True)
+        type_ = current_request_type_registry.lookup(
+            data.pop('type', None), quiet=True)
         if type_ is None or type_.type_id not in self.supported_types:
             raise ValidationError(
                 _('Invalid review type.'),
@@ -120,18 +122,18 @@ class ReviewService(RecordService):
                   "been published.")
             )
 
-        # TODO: once draft status has been changed to not be considered open
-        # the condition "review.status !=" can be removed.
-        if draft.parent.review.status != 'draft' \
-                and draft.parent.review.is_open:
+        if draft.parent.review.is_open:
             raise ReviewStateError(_("An open review cannot be deleted."))
 
-        # Delete request
-        current_requests_service.delete(
-            identity,
-            draft.parent.review.id,
-            uow=uow
-        )
+        # Keep the request when not open or not closed so that the user can see
+        # the request's events. The request is deleted only when in `draft`
+        # status
+        if not (draft.parent.review.is_closed or draft.parent.review.is_open):
+            current_requests_service.delete(
+                identity,
+                draft.parent.review.id,
+                uow=uow
+            )
         # Unset on record
         draft.parent.review = None
         uow.register(RecordCommitOp(draft.parent))
@@ -151,6 +153,14 @@ class ReviewService(RecordService):
 
         # All other preconditions can be checked by the action itself which can
         # raise appropriate exceptions.
-        request = current_requests_service.execute_action(
+        request_item = current_requests_service.execute_action(
             identity, draft.parent.review.id, 'submit', data=data, uow=uow)
-        return request
+
+        # TODO: this shouldn't be required BUT because of the caching mechanism
+        # in the review systemfield, the review should be set with the updated
+        # request object
+        draft.parent.review = request_item._request
+        uow.register(RecordCommitOp(draft.parent))
+        uow.register(RecordIndexOp(draft, indexer=self.indexer))
+
+        return request_item

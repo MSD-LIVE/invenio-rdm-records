@@ -16,7 +16,7 @@ from pathlib import Path
 from edtf.parser.grammar import level0Expression
 from faker import Faker
 from invenio_access.permissions import system_identity
-from invenio_requests.records.api import RequestEventFormat, RequestEventType
+from invenio_requests.records.api import RequestEventFormat
 
 
 class CachedVocabularies:
@@ -262,15 +262,7 @@ def create_fake_record():
             } for i in range(2)],
             "funding": [{
                 "funder": {
-                    "name": "European Commission",
-                    "identifier": "03yrm5c26",
-                    "scheme": "ror"
-                },
-                "award": {
-                    "title": "OpenAIRE",
-                    "number": "246686",
-                    "identifier": "0000-0002-1825-0097",
-                    "scheme": "orcid"
+                    "id": "00k4n6c32",
                 }
             }],
             # "locations": [{
@@ -319,15 +311,15 @@ def create_fake_community():
     """Create minimal community for demo purposes."""
     fake = Faker()
     return {
-        "id": fake.unique.domain_word(),
+        "slug": fake.unique.slug(),
         "access": {
             "visibility": "public",
         },
         "metadata": {
             "title": fake.sentence(nb_words=5, variable_nb_words=True),
-            "type": random.choice([
+            "type": {"id": random.choice([
                 "organization", "event", "topic", "project"
-            ]),
+            ])},
         }
     }
 
@@ -335,12 +327,11 @@ def create_fake_community():
 def create_fake_comment():
     """Create a fake comment for demo purposes."""
     fake = Faker()
-    comment = {
+    payload = {
         "content": fake.sentence(nb_words=20, variable_nb_words=True),
         "format": RequestEventFormat.HTML.value,
     }
-    with_type = {
-        "payload": comment,
-        "type": RequestEventType.COMMENT.value
+    comment = {
+        "payload": payload,
     }
-    return comment, with_type
+    return comment

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019-2021 CERN.
+# Copyright (C) 2019-2022 CERN.
 # Copyright (C) 2019-2022 Northwestern University.
 # Copyright (C) 2021 TU Wien.
+# Copyright (C) 2022 Graz University of Technology.
 #
 # Invenio-RDM-Records is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -12,6 +13,22 @@
 See https://pytest-invenio.readthedocs.io/ for documentation on which test
 fixtures are available.
 """
+
+# Monkey patch Werkzeug 2.1
+# Flask-Login uses the safe_str_cmp method which has been removed in Werkzeug
+# 2.1. Flask-Login v0.6.0 (yet to be released at the time of writing) fixes the
+# issue. Once we depend on Flask-Login v0.6.0 as the minimal version in
+# Flask-Security-Invenio/Invenio-Accounts we can remove this patch again.
+try:
+    # Werkzeug <2.1
+    from werkzeug import security
+    security.safe_str_cmp
+except AttributeError:
+    # Werkzeug >=2.1
+    import hmac
+
+    from werkzeug import security
+    security.safe_str_cmp = hmac.compare_digest
 
 from collections import namedtuple
 from copy import deepcopy
@@ -29,12 +46,15 @@ from invenio_access.models import ActionRoles
 from invenio_access.permissions import superuser_access, system_identity
 from invenio_accounts.models import Role
 from invenio_accounts.testutils import login_user_via_session
+from invenio_admin.permissions import action_admin_access
 from invenio_app.factory import create_app as _create_app
 from invenio_cache import current_cache
 from invenio_communities import current_communities
 from invenio_communities.communities.records.api import Community
 from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
+from invenio_vocabularies.contrib.awards.api import Award
+from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
@@ -222,6 +242,7 @@ def app_config(app_config):
 
     # OAI Server
     app_config["OAISERVER_ID_PREFIX"] = 'oai:inveniosoftware.org:recid/'
+    app_config["OAISERVER_RECORD_INDEX"] = 'rdmrecords-records'
     app_config['OAISERVER_METADATA_FORMATS'] = {
         'oai_dc': {
             'serializer': 'invenio_rdm_records.oai:dublincore_etree',
@@ -239,12 +260,9 @@ def app_config(app_config):
             'namespace': 'http://schema.datacite.org/oai/oai-1.1/',
         },
     }
-    app_config["INDEXER_DEFAULT_INDEX"] = "rdmrecords-records-record-v4.0.0"
+    app_config["INDEXER_DEFAULT_INDEX"] = "rdmrecords-records-record-v5.0.0"
     # Variable not used. We set it to silent warnings
     app_config['JSONSCHEMAS_HOST'] = 'not-used'
-
-    # Enable communities while in preview
-    app_config['COMMUNITIES_ENABLED'] = True
 
     # Enable DOI minting...
     app_config['DATACITE_ENABLED'] = True
@@ -442,15 +460,10 @@ def full_record(users):
             },
             "funding": [{
                 "funder": {
-                    "name": "European Commission",
-                    "identifier": "1234",
-                    "scheme": "ror"
+                    "id": "00k4n6c32",
                 },
                 "award": {
-                    "title": "OpenAIRE",
-                    "number": "246686",
-                    "identifier": ".../246686",
-                    "scheme": "openaire"
+                    "id": "00k4n6c32::755021"
                 }
             }],
             "references": [{
@@ -548,14 +561,40 @@ def minimal_record():
 def minimal_community():
     """Data for a minimal community."""
     return {
-        "id": "blr",
+        "slug": "blr",
         "access": {
             "visibility": "public",
         },
         "metadata": {
             "title": "Biodiversity Literature Repository",
-            "type": "topic"
+            "type": {"id": "topic"}
         }
+    }
+
+
+@pytest.fixture()
+def minimal_community2():
+    """Data for a minimal community too."""
+    return {
+        "slug": "rdm",
+        "access": {
+            "visibility": "public",
+        },
+        "metadata": {
+            "title": "Research Data Management",
+            "type": {"id": "topic"}
+        }
+    }
+
+
+@pytest.fixture()
+def minimal_oai_set():
+    """Data for a minimal OAI-PMH set."""
+    return {
+        "name": "name",
+        "spec": "spec",
+        "search_pattern": "is_published:true",
+        "description": None,
     }
 
 
@@ -586,7 +625,7 @@ def users(app, db):
 def client_with_login(client, users):
     """Log in a user to the client."""
     user = users[0]
-    login_user(user, remember=True)
+    login_user(user)
     login_user_via_session(client, email=user.email)
     return client
 
@@ -795,9 +834,7 @@ def description_type_v(app, description_type):
 @pytest.fixture(scope="module")
 def subject_v(app):
     """Subject vocabulary record."""
-    subjects_service = (
-        current_service_registry.get("rdm-subjects")
-    )
+    subjects_service = current_service_registry.get("subjects")
     vocab = subjects_service.create(system_identity, {
         "id": "http://id.nlm.nih.gov/mesh/A-D000007",
         "scheme": "MeSH",
@@ -930,7 +967,7 @@ def licenses_v(app, licenses):
 def affiliations_v(app):
     """Affiliation vocabulary record."""
     affiliations_service = (
-        current_service_registry.get("rdm-affiliations")
+        current_service_registry.get("affiliations")
     )
     aff = affiliations_service.create(system_identity, {
         "id": "cern",
@@ -948,6 +985,65 @@ def affiliations_v(app):
     Affiliation.index.refresh()
 
     return aff
+
+
+@pytest.fixture(scope="module")
+def funders_v(app):
+    """Funder vocabulary record."""
+    funders_service = current_service_registry.get("funders")
+    funder = funders_service.create(system_identity, {
+        "id": "00k4n6c32",
+        "identifiers": [
+            {
+                "identifier": "000000012156142X",
+                "scheme": "isni",
+            },
+            {
+                "identifier": "00k4n6c32",
+                "scheme": "ror",
+            }
+        ],
+        "name": "European Commission",
+        "title": {
+            "en": "European Commission",
+            "fr": "Commission européenne",
+        },
+        "country": "BE"
+    })
+
+    Funder.index.refresh()
+
+    return funder
+
+
+@pytest.fixture(scope="module")
+def awards_v(app, funders_v):
+    """Funder vocabulary record."""
+    awards_service = current_service_registry.get("awards")
+    award = awards_service.create(system_identity, {
+        "id": "755021",
+        "identifiers": [
+            {
+                "identifier": "https://cordis.europa.eu/project/id/755021",
+                "scheme": "url"
+            }
+        ],
+        "number": "755021",
+        "title": {
+            "en": (
+                "Personalised Treatment For Cystic Fibrosis Patients With "
+                "Ultra-rare CFTR Mutations (and beyond)"
+            ),
+        },
+        "funder": {
+            "id": "00k4n6c32"
+        },
+        "acronym": "HIT-CF",
+    })
+
+    Award.index.refresh()
+
+    return award
 
 
 @pytest.fixture(scope="function")
@@ -974,7 +1070,9 @@ RunningApp = namedtuple("RunningApp", [
     "date_type_v",
     "contributors_role_v",
     "relation_type_v",
-    "licenses_v"
+    "licenses_v",
+    "funders_v",
+    "awards_v",
 ])
 
 
@@ -982,7 +1080,8 @@ RunningApp = namedtuple("RunningApp", [
 def running_app(
     app, superuser_identity, location, cache, resource_type_v, subject_v,
     languages_v, affiliations_v, title_type_v, description_type_v,
-    date_type_v, contributors_role_v, relation_type_v, licenses_v
+    date_type_v, contributors_role_v, relation_type_v, licenses_v,
+    funders_v, awards_v,
 ):
     """This fixture provides an app with the typically needed db data loaded.
 
@@ -1003,7 +1102,9 @@ def running_app(
         date_type_v,
         contributors_role_v,
         relation_type_v,
-        licenses_v
+        licenses_v,
+        funders_v,
+        awards_v,
     )
 
 
@@ -1028,11 +1129,31 @@ def superuser_role_need(db):
 
 
 @pytest.fixture(scope="function")
-def superuser_identity(superuser_role_need):
+def superuser_identity(admin, superuser_role_need):
     """Superuser identity fixture."""
-    identity = Identity(1)
+    identity = admin.identity
     identity.provides.add(superuser_role_need)
     return identity
+
+
+@pytest.fixture(scope="function")
+def admin_role_need(db):
+    """Store 1 role with 'superuser-access' ActionNeed.
+
+    WHY: This is needed because expansion of ActionNeed is
+         done on the basis of a User/Role being associated with that Need.
+         If no User/Role is associated with that Need (in the DB), the
+         permission is expanded to an empty list.
+    """
+    role = Role(name="admin-access")
+    db.session.add(role)
+
+    action_role = ActionRoles.create(action=action_admin_access, role=role)
+    db.session.add(action_role)
+
+    db.session.commit()
+
+    return action_role.need
 
 
 @pytest.fixture()
@@ -1087,7 +1208,31 @@ def curator(UserFixture, app, db):
 
 
 @pytest.fixture()
-def community(running_app, curator, minimal_community):
+def community_type_type(superuser_identity):
+    """Creates and retrieves a language vocabulary type."""
+    v = vocabulary_service.create_type(
+        superuser_identity, "communitytypes", "comtyp")
+    return v
+
+
+@pytest.fixture()
+def community_type_record(superuser_identity, community_type_type):
+    """Creates a d retrieves community type records."""
+    record = vocabulary_service.create(
+        identity=superuser_identity,
+        data={
+            "id": 'topic',
+            "title": {"en": "Topic"},
+            'type': 'communitytypes',
+        },
+    )
+    Vocabulary.index.refresh()  # Refresh the index
+
+    return record
+
+
+@pytest.fixture()
+def community(running_app, community_type_record, curator, minimal_community):
     """Get the current RDM records service."""
     c = current_communities.service.create(
         curator.identity,
@@ -1104,3 +1249,20 @@ def headers():
         'content-type': 'application/json',
         'accept': 'application/json',
     }
+
+
+@pytest.fixture()
+def admin(UserFixture, app, db, admin_role_need):
+    """Admin user for requests."""
+    u = UserFixture(
+        email="admin@inveniosoftware.org",
+        password="admin",
+    )
+    u.create(app, db)
+
+    datastore = app.extensions["security"].datastore
+    _, role = datastore._prepare_role_modify_args(u.user, "admin-access")
+
+    datastore.add_role_to_user(u.user, role)
+    db.session.commit()
+    return u

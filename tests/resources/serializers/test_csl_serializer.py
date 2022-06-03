@@ -30,14 +30,14 @@ def test_csl_json_serializer(running_app, full_record):
         "language": "dan",
         "title": "InvenioRDM",
         "issued": {"date-parts": [["2018"], ["2020", "09"]]},
-        "abstract": "A description with HTML tags",
+        "abstract": "A description \nwith HTML tags",
         "author": [
             {
                 "family": "Nielsen",
                 "given": "Lars Holm",
             }
         ],
-        "note": "Funding by European Commission ROR 1234.",
+        "note": "Funding by European Commission ROR 00k4n6c32.",
         "version": "v1.0",
         "type": "graphic",
         "id": "12345-abcde",

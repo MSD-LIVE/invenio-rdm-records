@@ -4,6 +4,7 @@
 # Copyright (C) 2020-2021 Northwestern University.
 # Copyright (C)      2021 TU Wien.
 # Copyright (C)      2021 Graz University of Technology.
+# Copyright (C) 2022 Universität Hamburg
 #
 # Invenio-RDM-Records is free software; you can redistribute it and/or modify
 # it under the terms of the MIT License; see LICENSE file for more details.
@@ -12,7 +13,7 @@
 
 from flask_babelex import gettext as _
 from invenio_drafts_resources.services.records.components import \
-    DraftFilesComponent, PIDComponent
+    DraftFilesComponent, PIDComponent, RelationsComponent
 from invenio_drafts_resources.services.records.config import \
     RecordServiceConfig, SearchDraftsOptions, SearchOptions, \
     SearchVersionsOptions, is_draft, is_record
@@ -20,14 +21,13 @@ from invenio_records_resources.services import ConditionalLink, \
     FileServiceConfig
 from invenio_records_resources.services.base.links import Link
 from invenio_records_resources.services.files.links import FileLink
-from invenio_records_resources.services.records.links import RecordLink
-
-from invenio_rdm_records.services.components.review import ReviewComponent
+from invenio_records_resources.services.records.links import RecordLink, \
+    pagination_links
 
 from ..records import RDMDraft, RDMRecord
 from . import facets
 from .components import AccessComponent, MetadataComponent, PIDsComponent, \
-    RelationsComponent, ReviewComponent
+    ReviewComponent
 from .customizations import ConfiguratorMixin, FromConfig, \
     FromConfigPIDsProviders, FromConfigRequiredPIDs, FromConfigSearchOptions, \
     SearchOptionsMixin
@@ -49,7 +49,8 @@ def is_record_and_has_doi(record, ctx):
 
 def has_doi(record, ctx):
     """Determine if a record has a DOI."""
-    return 'doi' in record.pids
+    pids = record.pids or {}
+    return 'doi' in pids
 
 
 #
@@ -161,6 +162,16 @@ class RDMRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
                 for (scheme, pid) in record.pids.items()
             })
         ),
+        'self_iiif_manifest': ConditionalLink(
+            cond=is_record,
+            if_=RecordLink("{+api}/iiif/record:{id}/manifest"),
+            else_=RecordLink("{+api}/iiif/draft:{id}/manifest")
+        ),
+        'self_iiif_sequence': ConditionalLink(
+            cond=is_record,
+            if_=RecordLink("{+api}/iiif/record:{id}/sequence/default"),
+            else_=RecordLink("{+api}/iiif/draft:{id}/sequence/default")
+        ),
         "files": ConditionalLink(
             cond=is_record,
             if_=RecordLink("{+api}/records/{id}/files"),
@@ -197,6 +208,9 @@ class RDMRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
         "reserve_doi": RecordLink("{+api}/records/{id}/draft/pids/doi")
     }
 
+    links_search_community_records = pagination_links(
+        "{+api}/communities/{id}/records{?args*}")
+
 
 class RDMFileRecordServiceConfig(FileServiceConfig, ConfiguratorMixin):
     """Configuration for record files."""
@@ -205,6 +219,19 @@ class RDMFileRecordServiceConfig(FileServiceConfig, ConfiguratorMixin):
     permission_policy_cls = FromConfig(
         "RDM_PERMISSION_POLICY", default=RDMRecordPermissionPolicy
     )
+
+    file_links_item = {
+        **FileServiceConfig.file_links_item,
+        # FIXME: should we check if the file is IIIF compatible?
+        # FIXME: filename instead
+        "iiif_canvas": FileLink("{+api}/iiif/record:{id}/canvas/{key}"),
+        "iiif_base": FileLink("{+api}/iiif/record:{id}:{key}"),
+        "iiif_info": FileLink("{+api}/iiif/record:{id}:{key}/info.json"),
+        "iiif_api": FileLink(
+            "{+api}/iiif/record:{id}:{key}/{region=full}"
+            "/{size=full}/{rotation=0}/{quality=default}.{format=png}"
+        ),
+    }
 
 
 class RDMFileDraftServiceConfig(FileServiceConfig, ConfiguratorMixin):
@@ -224,4 +251,15 @@ class RDMFileDraftServiceConfig(FileServiceConfig, ConfiguratorMixin):
         "self": FileLink("{+api}/records/{id}/draft/files/{key}"),
         "content": FileLink("{+api}/records/{id}/draft/files/{key}/content"),
         "commit": FileLink("{+api}/records/{id}/draft/files/{key}/commit"),
+        # FIXME: should we check if the file is IIIF compatible?
+        # FIXME: filename instead
+        "iiif_canvas": FileLink("{+api}/iiif/draft:{id}/canvas/{key}"),
+        "iiif_base": FileLink("{+api}/iiif/draft:{id}:{key}"),
+        "iiif_info": FileLink(
+            "{+api}/iiif/draft:{id}:{key}/info.json"
+        ),
+        "iiif_api": FileLink(
+            "{+api}/iiif/draft:{id}:{key}/{region=full}"
+            "/{size=full}/{rotation=0}/{quality=default}.{format=png}"
+        ),
     }

@@ -166,7 +166,7 @@ def test_datacite43_serializer(running_app, full_record):
         ],
         "descriptions": [
             {
-                "description": "A description with HTML tags",
+                "description": "A description \nwith HTML tags",
                 "descriptionType": "Abstract"
             }, {
                 "description": "Bla bla bla",
@@ -186,11 +186,14 @@ def test_datacite43_serializer(running_app, full_record):
         "fundingReferences": [
             {
                 "funderName": "European Commission",
-                "funderIdentifier": "1234",
+                "funderIdentifier": "00k4n6c32",
                 "funderIdentifierType": "ROR",
-                "awardTitle": "OpenAIRE",
-                "awardNumber": "246686",
-                "awardURI": ".../246686",
+                "awardTitle": (
+                    "Personalised Treatment For Cystic Fibrosis Patients With "
+                    "Ultra-rare CFTR Mutations (and beyond)"
+                ),
+                "awardNumber": "755021",
+                "awardURI": "https://cordis.europa.eu/project/id/755021",
             }
         ],
         "schemaVersion": "http://datacite.org/schema/kernel-4",
@@ -260,7 +263,8 @@ def test_datacite43_xml_serializer(running_app, full_record):
         "    <rights rightsURI=\"https://creativecommons.org/licenses/by/4.0/legalcode\" rightsIdentifierScheme=\"spdx\" rightsIdentifier=\"cc-by-4.0\">Creative Commons Attribution 4.0 International</rights>",  # noqa
         "  </rightsList>",
         "  <descriptions>",
-        "    <description descriptionType=\"Abstract\">A description with HTML tags</description>",  # noqa
+        "    <description descriptionType=\"Abstract\">A description ",
+        "with HTML tags</description>",
         "    <description descriptionType=\"Methods\" xml:lang=\"eng\">Bla bla bla</description>",  # noqa
         "  </descriptions>",
         "  <geoLocations>",
@@ -275,9 +279,9 @@ def test_datacite43_xml_serializer(running_app, full_record):
         "  <fundingReferences>",
         "    <fundingReference>",
         "      <funderName>European Commission</funderName>",
-        "      <funderIdentifier funderIdentifierType=\"ROR\">1234</funderIdentifier>",  # noqa
-        "      <awardNumber>246686</awardNumber>",
-        "      <awardTitle>OpenAIRE</awardTitle>",
+        "      <funderIdentifier funderIdentifierType=\"ROR\">00k4n6c32</funderIdentifier>",  # noqa
+        "      <awardNumber>755021</awardNumber>",
+        "      <awardTitle>Personalised Treatment For Cystic Fibrosis Patients With Ultra-rare CFTR Mutations (and beyond)</awardTitle>",  # noqa
         "    </fundingReference>",
         "  </fundingReferences>",
         "</resource>",
@@ -287,8 +291,7 @@ def test_datacite43_xml_serializer(running_app, full_record):
     serializer = DataCite43XMLSerializer()
     serialized_record = serializer.serialize_object(full_record)
 
-    # split by breaklines makes it easier to see diffs
-    assert serialized_record.split("\n") == expected_data
+    assert serialized_record == "\n".join(expected_data)
 
 
 def test_datacite43_identifiers(running_app, minimal_record):
