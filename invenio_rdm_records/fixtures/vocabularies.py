@@ -274,17 +274,13 @@ class VocabulariesFixture:
             data = yaml.safe_load(f) or {}
             for id_, yaml_entry in data.items():
                 # Some vocabularies are non-generic
-                if id_ == "subjects":
+                if id_ in ("subjects", "affiliations"):
                     entry = VocabularyEntryWithSchemes(
-                        "subjects_service", dir_, id_, yaml_entry
+                        id_, dir_, id_, yaml_entry
                     )
-                elif id_ == "affiliations":
-                    entry = VocabularyEntryWithSchemes(
-                        "affiliations_service", dir_, id_, yaml_entry
-                    )
-                elif id_ == "names":
+                elif id_ in ("names", "funders", "awards"):
                     entry = VocabularyEntry(
-                        "names_service", dir_, id_, yaml_entry
+                        id_, dir_, id_, yaml_entry
                     )
                 else:
                     entry = GenericVocabularyEntry(dir_, id_, yaml_entry)
@@ -374,7 +370,7 @@ class GenericVocabularyEntry(VocabularyEntry):
 
     def __init__(self, directory, id_, entry):
         """Constructor."""
-        super().__init__("vocabulary_service", directory, id_, entry)
+        super().__init__("vocabularies", directory, id_, entry)
 
     # Template methods
     def iterate(self, ignore):

@@ -14,9 +14,12 @@ import pytest
 from invenio_access.permissions import system_identity
 from invenio_communities import current_communities
 from invenio_communities.communities.records.api import Community
-from invenio_communities.invitations import CommunityMemberInvitation
+from invenio_communities.members import Member
 from invenio_requests import current_requests_service
 from invenio_requests.records import Request
+from invenio_vocabularies.contrib.awards.api import Award
+from invenio_vocabularies.contrib.funders.api import Funder
+from invenio_vocabularies.records.api import Vocabulary
 
 from invenio_rdm_records.fixtures.demo import create_fake_community, \
     create_fake_record
@@ -38,6 +41,9 @@ def vocabularies():
         delay=False,
     )
     vocabularies.load()
+    Vocabulary.index.refresh()
+    Award.index.refresh()
+    Funder.index.refresh()
 
 
 def test_create_fake_demo_draft_record(app, location, db, es_clear,
@@ -61,7 +67,9 @@ def test_create_fake_demo_draft_record(app, location, db, es_clear,
     assert records.total > 0
 
 
-def test_create_fake_demo_communities(app, location, db, es_clear, users):
+def test_create_fake_demo_communities(
+    app, location, db, es_clear, vocabularies, users
+):
     """Assert that demo communities creation works without failing."""
     user_id = users[0].id
 
@@ -73,8 +81,9 @@ def test_create_fake_demo_communities(app, location, db, es_clear, users):
     assert communities.total > 0
 
 
-def test_create_fake_demo_inclusion_requests(app, location, db, es_clear,
-                                             vocabularies, users):
+def test_create_fake_demo_inclusion_requests(
+    app, location, db, es_clear, vocabularies, users
+):
     """Assert that demo inclusion requests creation works without failing."""
     user_id = users[0].id
 
@@ -92,18 +101,24 @@ def test_create_fake_demo_inclusion_requests(app, location, db, es_clear,
     assert reqs.total > 0
 
 
-def test_create_fake_demo_invitation_requests(app, location, db, es_clear,
-                                              vocabularies, users):
+def test_create_fake_demo_invitation_requests(
+    app, location, db, es_clear, vocabularies, users
+):
     """Assert that demo invitation requests creation works without failing."""
-    user_id = users[0].id
+    first_user_id = users[0].id
 
-    create_demo_community(user_id, create_fake_community())
+    create_demo_record(first_user_id, create_fake_record(), publish=True)
+    RDMDraft.index.refresh()
+    comm = create_demo_community(first_user_id, create_fake_community())
     Community.index.refresh()
+    user_identity = get_authenticated_identity(first_user_id)
+    communities = current_communities.service.search(user_identity)
+    comm = communities.to_dict()["hits"]["hits"][0]
 
-    create_demo_invitation_requests(user_id, 1)
-    Request.index.refresh()
+    other_user_id = users[1].id
+    create_demo_invitation_requests(other_user_id, 1)
+    Member.index.refresh()
 
-    user_identity = get_authenticated_identity(user_id)
-    _t = CommunityMemberInvitation.type_id
-    reqs = current_requests_service.search(user_identity, type=_t)
+    service = current_communities.service.members
+    reqs = service.search_invitations(system_identity, comm["id"])
     assert reqs.total > 0
