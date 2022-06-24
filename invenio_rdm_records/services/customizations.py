@@ -18,7 +18,7 @@ from ..searchconfig import SearchConfig
 #
 def _make_cls(cls, attrs):
     """Make the custom config class."""
-    return type(f'Custom{cls.__name__}', (cls, ), attrs, )
+    return type(f'Custom{cls.__name__}', (cls,), attrs, )
 
 
 #
@@ -112,7 +112,10 @@ class FromConfigPIDsProviders:
             p.name: p for p in
             obj._app.config.get("RDM_PERSISTENT_IDENTIFIER_PROVIDERS", [])
         }
-        doi_enabled = obj._app.config.get("DATACITE_ENABLED", False)
+        # TODO test this - don't know how doi_enabled is used or why it's returned
+        datacite_enabled = obj._app.config.get("DATACITE_ENABLED", False)
+        osti_enabled = obj._app.config.get("OSTI_ENABLED", False)
+        doi_enabled = datacite_enabled | osti_enabled
 
         return {
             scheme: get_provider_dict(conf, providers)
@@ -127,7 +130,9 @@ class FromConfigRequiredPIDs:
     def __get__(self, obj, objtype=None):
         """Return required pids (descriptor protocol)."""
         pids = obj._app.config.get("RDM_PERSISTENT_IDENTIFIERS", {})
-        doi_enabled = obj._app.config.get("DATACITE_ENABLED", False)
+        datacite_enabled = obj._app.config.get("DATACITE_ENABLED", False)
+        osti_enabled = obj._app.config.get("OSTI_ENABLED", False)
+        doi_enabled = datacite_enabled | osti_enabled
 
         pids = {
             scheme: conf for (scheme, conf) in pids.items()

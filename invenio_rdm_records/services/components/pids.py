@@ -105,10 +105,25 @@ class PIDsComponent(ServiceComponent):
         self.service.pids.pid_manager.reserve_all(draft, pids)
         record.pids = pids
 
-        # Async register/update tasks after transaction commit.
+        # MSDLIVE CHANGE don't mint DOI's in worker thread as when there are errors the
+        # UI is not reflecting that - also easier to debug while developing
+        # # Async register/update tasks after transaction commit.
         for scheme in pids.keys():
             self.uow.register(
                 TaskOp(register_or_update_pid, record["id"], scheme))
+
+        # this isn't working because the register_or_update code assumes the record is already
+        # published and is getting the record (not the draft) from the service to see what
+        # doi providers it has, so have to revert to doing this in the worker thread so the
+        # record gets published BEFORE doi minting
+        # from invenio_access.permissions import system_identity
+        # for scheme in pids.keys():
+        #     self.service.pids.register_or_update(
+        #         id_=record["id"],
+        #         identity=system_identity,
+        #         scheme=scheme,
+        #     )
+
 
     def new_version(self, identity, draft=None, record=None):
         """A new draft should not have any pids from the previous record."""
