@@ -342,11 +342,11 @@ RDM_FACETS = {
 
 #
 # MSDLIVE CHANGE BEGIN - adding custom metadata
-#    
+#
     'msdlive_project': {
         'facet': facets.msdlive_project,
         'ui': {
-            'field': 'msdlive_projects.project',
+            'field': 'msdlive_projects.name',
         }
     },
     'msdlive_sector': {
@@ -381,7 +381,7 @@ RDM_FACETS = {
     },
 #
 # MSDLIVE CHANGE END
-#   
+#
 
     'subject_nested': {
         'facet': facets.subject_nested,
