@@ -187,11 +187,6 @@ class ProjectSchema(Schema):
     id = SanitizedUnicode()
     name = SanitizedUnicode()
 
-    # wasn't validating but after i added this for debugging it suddenly is (maybe wasn't updated in site packages?)
-    @validates_schema
-    def validate_project(self, data, **kwargs):
-        print(data.get("id"))
-
 class TemporalSchema(Schema):
     """Schema for the MSD-LIVE temporal resolution"""
 
