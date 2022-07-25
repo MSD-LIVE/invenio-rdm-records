@@ -57,6 +57,18 @@ class AcceptAction(actions.AcceptAction):
         draft.parent.communities.add(
             community, request=self.request, default=is_default
         )
+
+        # MSDLIVE CHANGE BEGIN
+        projects = draft.metadata.get('msdlive_projects');
+        if projects:
+            # skip the project that is the same as the community already added
+            for project in projects:
+                if project.get('id') != str(community.id):
+                    draft.parent.communities.add(
+                        project.get('id'), request=None, default=False
+                    )
+
+        # MSDLIVE CHANGE END
         uow.register(RecordCommitOp(draft.parent))
 
         # Publish the record

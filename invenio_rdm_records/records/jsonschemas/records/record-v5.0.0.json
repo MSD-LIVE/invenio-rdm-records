@@ -50,9 +50,12 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-                "project": {
-                  "type": "string"
-                }
+              "name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
             }
           }
         },

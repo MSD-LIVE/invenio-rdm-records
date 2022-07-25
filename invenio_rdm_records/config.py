@@ -346,7 +346,7 @@ RDM_FACETS = {
     'msdlive_project': {
         'facet': facets.msdlive_project,
         'ui': {
-            'field': 'msdlive_projects.project',
+            'field': 'msdlive_projects.name',
         }
     },
     'msdlive_sector': {

@@ -169,7 +169,7 @@ class TitleSchema(Schema):
 
 #
 # MSDLIVE CHANGE BEGIN - adding custom metadata
-# 
+#
 
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
@@ -182,9 +182,10 @@ class ScenarioSchema(Schema):
     scenario = SanitizedUnicode()
 
 class ProjectSchema(Schema):
-    """Schema for the MSD-LIVE scenario"""
+    """Schema for the MSD-LIVE project"""
 
-    project = SanitizedUnicode()
+    id = SanitizedUnicode()
+    name = SanitizedUnicode()
 
 class TemporalSchema(Schema):
     """Schema for the MSD-LIVE temporal resolution"""
@@ -203,7 +204,7 @@ class ModelSchema(Schema):
 
 #
 # MSDLIVE CHANGE END
-# 
+#
 class DescriptionSchema(Schema):
     """Schema for the additional descriptions."""
 
@@ -370,17 +371,23 @@ class MetadataSchema(Schema):
 
     #
     # MSDLIVE CHANGE BEGIN - adding custom metadata
-    # 
+    #
     msdlive_sectors = fields.List(fields.Nested(SectorSchema))
     msdlive_scenarios = fields.List(fields.Nested(ScenarioSchema))
-    msdlive_projects = fields.List(fields.Nested(ProjectSchema))
+    msdlive_projects = fields.List(
+        fields.Nested(ProjectSchema),
+        required = True,
+        validate = validate.Length(
+            min=1, error=_("Missing required field (project).")
+        )
+    )
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
 
     #
     # MSDLIVE CHANGE END
-    # 
+    #
     title = SanitizedUnicode(required=True, validate=validate.Length(min=3))
     additional_titles = fields.List(fields.Nested(TitleSchema))
     publisher = SanitizedUnicode()
