@@ -374,7 +374,13 @@ class MetadataSchema(Schema):
     #
     msdlive_sectors = fields.List(fields.Nested(SectorSchema))
     msdlive_scenarios = fields.List(fields.Nested(ScenarioSchema))
-    msdlive_projects = fields.List(fields.Nested(ProjectSchema))
+    msdlive_projects = fields.List(
+        fields.Nested(ProjectSchema),
+        required = True,
+        validate = validate.Length(
+            min=1, error=_("Missing required field (project).")
+        )
+    )
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
