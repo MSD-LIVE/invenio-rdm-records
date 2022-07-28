@@ -9,7 +9,7 @@
 
 import json
 import warnings
-from invenio_rdm_records.resources.serializers import DataCite43JSONSerializer
+from invenio_rdm_records.resources.serializers import OSTIJSONSerializer
 
 # TODO Import and use the OSTI python client api instead - consider perhaps just copying it in here as there is hardly anything to it,
 # see: https://github.com/doecode/ostiapi/blob/master/ostiapi/__init__.py
@@ -103,7 +103,7 @@ class OSTIPIDProvider(PIDProvider):
             pid_type=pid_type,
             default_status=default_status
         )
-        self.serializer = serializer or DataCite43JSONSerializer()
+        self.serializer = serializer or OSTIJSONSerializer()
         self._config_prefix="OSTI"
 
     def cfgkey(self, key):
@@ -127,7 +127,8 @@ class OSTIPIDProvider(PIDProvider):
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
             password = self.cfg('password')
-            # should we send the whole doc or just the title when we reserve?
+            # do NOT run the serializer dump_one as it will also validate the record and records do not need to have all required
+            # fields entered before reserving a DOI (the dump_one code will throw an exception if the record isn't valid)
             # doc = self.serializer.dump_one(record)
             doc = {
                 "title": "Placeholder Title"
@@ -135,13 +136,19 @@ class OSTIPIDProvider(PIDProvider):
             if record.get('metadata').get('title'):
                 doc['title']=record.get('metadata').get('title')
             doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
-
+            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
+            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
+            current_app.logger.info("doc being sent to OSTI: " f"{doc}")
             osti_record = self.client.api.reserve(
                 doc,
                 username, password)
-            current_app.logger.info("osti record returned from reserve" f"{json.dumps(osti_record)}")
-            current_app.logger.info("DOI: " f"{osti_record.get('record').get('doi')}")
+            current_app.logger.info("osti record returned from reserve" f"{osti_record}")
+            error = self.parse_osti_error(osti_record)
+            if error:
+                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+                return False
 
+            current_app.logger.info("DOI: " f"{osti_record.get('record').get('doi')}")
             return osti_record.get('record').get('doi')
         except Exception as e:
             current_app.logger.error("OSTI provider error when "
@@ -149,11 +156,15 @@ class OSTIPIDProvider(PIDProvider):
             current_app.logger.error(e)
             return False
 
+    def parse_osti_error(self, osti_record):
+        if osti_record.get("status") == "FAILURE":
+            return osti_record.get("status_message")
+
     def can_modify(self, pid, **kwargs):
         """Checks if the PID can be modified."""
         return not pid.is_registered() and not pid.is_reserved()
 
-    def register(self, pid, record, **kwargs):
+    def register(self, pid, record, url=None, **kwargs):
         """Register a DOI via the OSTI API.
 
         :param pid: the PID to register.
@@ -166,23 +177,28 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
         try:
-            # debug here to see what doc looks like and compare with required metadata fields listed on https://github.com/doecode/ostiapi
-            # self.serializer.dump_one(record)
-            # TODO - THIS IS WHERE WE WILL USE UMA'S SERIALIZER, RIGHT NOW SENDING HARD CODED JSON
-            doc = self._get_dummy_metadata(self.cfg('contract_nos'), self.cfg('sponsor_org'))
-
+            doc = self.serializer.dump_one(record)
             username = self.cfg('username')
             password = self.cfg('password')
             prefix = self.cfg('accession_number_prefix')
+
             # first generate the accession_num (A site-specified unique identifier to optionally identify the record) for this record
             # in the same way as was done in the generate_id method above and add it to the doc that the serializer returns
             # we need to pass this so OSTI will mint the already created DOI instead of generating a new one
             # always generate and send the accession_num to use with future calls to OSTI's api for this record (i.e. to mint or update an already minted):
             doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
+            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
+            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
+            doc['site_url'] = url
+            current_app.logger.info("doc sent to OSTI " f"{doc}")
 
-            result = self.client.api.post(doc, username, password)
-            current_app.logger.info("osti DOI minted and returned " f"{result}")
+            osti_record = self.client.api.post(doc, username, password)
+            error = self.parse_osti_error(osti_record)
+            if error:
+                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+                return False
 
+            current_app.logger.info("osti DOI minted and returned " f"{osti_record}")
             return True
         except Exception as e:
             current_app.logger.error("OSTI provider error when "
@@ -205,13 +221,21 @@ class OSTIPIDProvider(PIDProvider):
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
             # Set metadata
-            # doc = self.serializer.dump_one(record)
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
             password = self.cfg('password')
-            doc = self._get_dummy_metadata(self.cfg('contract_nos'), self.cfg('sponsor_org'))
+            doc = self.serializer.dump_one(record)
+            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
+            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
             doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
+            doc['site_url'] = url
+
+            current_app.logger.info("doc sent to OSTI " f"{doc}")
             osti_record = self.client.api.post(doc, username, password)
+            error = self.parse_osti_error(osti_record)
+            if error:
+                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+                return False
 
             current_app.logger.info("osti record returned from reserve" f"{json.dumps(osti_record)}")
             return True
@@ -247,13 +271,6 @@ class OSTIPIDProvider(PIDProvider):
                   array of error messages.
         """
         _, errors = super().validate(record, identifier, provider, **kwargs)
-
-        # There are no check doi api's with OSTI
-        # # Format check
-        # try:
-        #     self.client.api.check_doi(identifier)
-        # except ValueError as e:
-        #     errors.append(str(e))
 
         return (True, []) if not errors else (False, errors)
 
