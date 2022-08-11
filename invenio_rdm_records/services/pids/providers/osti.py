@@ -256,10 +256,10 @@ class OSTIPIDProvider(PIDProvider):
         """
 
         # according to OSTI docs there is no support for delete in either draft or published form
-        current_app.logger.warning("There is no delete api for OSTI provider, delete failed for"
-                                   f"DOI for {pid.pid_value}")
+        current_app.logger.warning("There is no delete api for OSTI provider, this DOI will remain in draft form at OSTI:"
+                                   f" {pid.pid_value}")
 
-        return False
+        return super().delete(pid, **kwargs)
 
     def validate(
         self, record, identifier=None, provider=None, **kwargs
