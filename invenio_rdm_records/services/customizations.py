@@ -18,7 +18,11 @@ from ..searchconfig import SearchConfig
 #
 def _make_cls(cls, attrs):
     """Make the custom config class."""
-    return type(f'Custom{cls.__name__}', (cls,), attrs, )
+    return type(
+        f"Custom{cls.__name__}",
+        (cls,),
+        attrs,
+    )
 
 
 #
@@ -32,11 +36,11 @@ class SearchOptionsMixin:
         """Customize the search options."""
         attrs = {}
         if opts.facets:
-            attrs['facets'] = opts.facets
+            attrs["facets"] = opts.facets
         if opts.sort_options:
-            attrs['sort_options'] = opts.sort_options
-            attrs['sort_default'] = opts.sort_default
-            attrs['sort_default_no_query'] = opts.sort_default_no_query
+            attrs["sort_options"] = opts.sort_options
+            attrs["sort_default"] = opts.sort_default
+            attrs["sort_default_no_query"] = opts.sort_default_no_query
         return _make_cls(cls, attrs) if attrs else cls
 
 
@@ -103,14 +107,14 @@ class FromConfigPIDsProviders:
                 # This may throw a KeyError which is a sign that the config
                 # is wrong.
                 provider_dict[name] = pid_providers[name]
-                provider_dict['default'] = provider_dict['default'] or name
+                provider_dict["default"] = provider_dict["default"] or name
 
             return provider_dict
 
         pids = obj._app.config.get("RDM_PERSISTENT_IDENTIFIERS", {})
         providers = {
-            p.name: p for p in
-            obj._app.config.get("RDM_PERSISTENT_IDENTIFIER_PROVIDERS", [])
+            p.name: p
+            for p in obj._app.config.get("RDM_PERSISTENT_IDENTIFIER_PROVIDERS", [])
         }
         # TODO test this - don't know how doi_enabled is used or why it's returned
         datacite_enabled = obj._app.config.get("DATACITE_ENABLED", False)
@@ -120,7 +124,7 @@ class FromConfigPIDsProviders:
         return {
             scheme: get_provider_dict(conf, providers)
             for scheme, conf in pids.items()
-            if scheme != 'doi' or doi_enabled
+            if scheme != "doi" or doi_enabled
         }
 
 
@@ -135,12 +139,12 @@ class FromConfigRequiredPIDs:
         doi_enabled = datacite_enabled | osti_enabled
 
         pids = {
-            scheme: conf for (scheme, conf) in pids.items()
-            if scheme != 'doi' or doi_enabled
+            scheme: conf
+            for (scheme, conf) in pids.items()
+            if scheme != "doi" or doi_enabled
         }
         return [
-            scheme for (scheme, conf) in pids.items()
-            if conf.get("required", False)
+            scheme for (scheme, conf) in pids.items() if conf.get("required", False)
         ]
 
 
@@ -156,8 +160,8 @@ class FromConfigSearchOptions:
     def __get__(self, obj, objtype=None):
         """Return value that was grafted on obj (descriptor protocol)."""
         search_opts = obj._app.config.get(self.config_key, self.default)
-        sort_opts = obj._app.config.get('RDM_SORT_OPTIONS')
-        facet_opts = obj._app.config.get('RDM_FACETS')
+        sort_opts = obj._app.config.get("RDM_SORT_OPTIONS")
+        facet_opts = obj._app.config.get("RDM_FACETS")
 
         search_config = SearchConfig(
             search_opts,

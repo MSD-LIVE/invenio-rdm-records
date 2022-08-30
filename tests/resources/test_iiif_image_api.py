@@ -10,8 +10,6 @@ from io import BytesIO
 from PIL import Image
 from werkzeug.utils import secure_filename
 
-from tests.helpers import login_user, logout_user
-
 
 def publish_record_with_images(
     client, file_id, record, headers, restricted_files=False
@@ -23,12 +21,12 @@ def publish_record_with_images(
 
     # Create a draft
     res = client.post("/records", headers=headers, json=record)
-    id_ = res.json['id']
+    id_ = res.json["id"]
 
     # create a new image
-    res = client.post(f"/records/{id_}/draft/files", headers=headers, json=[
-        {'key': file_id}
-    ])
+    res = client.post(
+        f"/records/{id_}/draft/files", headers=headers, json=[{"key": file_id}]
+    )
 
     # Upload a file
     image_file = BytesIO()
@@ -37,14 +35,12 @@ def publish_record_with_images(
     image_file.seek(0)
     res = client.put(
         f"/records/{id_}/draft/files/{file_id}/content",
-        headers={'content-type': 'application/octet-stream'},
+        headers={"content-type": "application/octet-stream"},
         data=image_file,
     )
 
     # Commit the file
-    res = client.post(
-        f"/records/{id_}/draft/files/{file_id}/commit", headers=headers
-    )
+    res = client.post(f"/records/{id_}/draft/files/{file_id}/commit", headers=headers)
 
     # Publish the record
     res = client.post(f"/records/{id_}/draft/actions/publish", headers=headers)
@@ -52,39 +48,50 @@ def publish_record_with_images(
     return id_
 
 
-def test_iiif_base(
-    running_app, es_clear, client_with_login, headers, minimal_record
+def test_file_links_depending_on_file_extensions(
+    running_app, es_clear, client, uploader, headers, minimal_record
 ):
-    client = client_with_login
+    client = uploader.login(client)
+    file_id = "test_image.zip"
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
+    response = client.get(f"/records/{recid}/files/{file_id}")
+    assert "iiif_canvas" not in response.json["links"]
+    assert "iiif_base" not in response.json["links"]
+    assert "iiif_info" not in response.json["links"]
+    assert "iiif_api" not in response.json["links"]
+
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
+    response = client.get(f"/records/{recid}/files/{file_id}")
+    assert "iiif_canvas" in response.json["links"]
+    assert "iiif_base" in response.json["links"]
+    assert "iiif_info" in response.json["links"]
+    assert "iiif_api" in response.json["links"]
+
+
+def test_iiif_base(running_app, es_clear, client, uploader, headers, minimal_record):
+    client = uploader.login(client)
+    file_id = "test_image.png"
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}:{file_id}")
     assert response.status_code == 301
     assert (
         response.json["location"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}/info.json"
+        == f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}/info.json"
     )
 
 
-def test_iiif_info(
-    running_app, es_clear, client_with_login, headers, minimal_record
-):
-    client = client_with_login
+def test_iiif_info(running_app, es_clear, client, uploader, headers, minimal_record):
+    client = uploader.login(client)
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}:{file_id}/info.json")
     assert response.status_code == 200
     assert response.json == {
         "@context": "http://iiif.io/api/image/2/context.json",
-        'profile': ['http://iiif.io/api/image/2/level2.json'],
-        'protocol': 'http://iiif.io/api/image',
-        "@id":
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}",
+        "profile": ["http://iiif.io/api/image/2/level2.json"],
+        "protocol": "http://iiif.io/api/image",
+        "@id": f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}",
         "tiles": [{"width": 256, "scaleFactors": [1, 2, 4, 8, 16, 32, 64]}],
         "width": 1280,
         "height": 1024,
@@ -99,22 +106,23 @@ def test_api_info_not_found(running_app, es_clear, client):
 def test_iiif_base_restricted_files(
     running_app,
     es_clear,
-    client_with_login,
+    client,
+    uploader,
     headers,
     minimal_record,
     users,
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
     recid = publish_record_with_images(
         client, file_id, minimal_record, headers, restricted_files=True
     )
-    logout_user(client)
+    client = uploader.logout(client)
     response = client.get(f"/iiif/record:{recid}:{file_id}")
     assert response.status_code == 403
 
     # Log in user and try again
-    login_user(client, users[0])
+    client = uploader.login(client)
     response = client.get(f"/iiif/record:{recid}:{file_id}")
     assert response.status_code == 301
 
@@ -122,34 +130,33 @@ def test_iiif_base_restricted_files(
 def test_iiif_info_restricted_files(
     running_app,
     es_clear,
-    client_with_login,
+    client,
+    uploader,
     headers,
     minimal_record,
     users,
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
     recid = publish_record_with_images(
         client, file_id, minimal_record, headers, restricted_files=True
     )
-    logout_user(client)
+    client = uploader.logout(client)
     response = client.get(f"/iiif/record:{recid}:{file_id}/info.json")
     assert response.status_code == 403
 
     # Log in user and try again
-    login_user(client, users[0])
+    client = uploader.login(client)
     response = client.get(f"/iiif/record:{recid}:{file_id}/info.json")
     assert response.status_code == 200
 
 
 def test_iiif_image_api(
-    running_app, es_clear, client_with_login, headers, minimal_record
+    running_app, es_clear, client, uploader, headers, minimal_record
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
 
     # create a new image equal to the one in the record
     tmp_file = BytesIO()
@@ -157,9 +164,7 @@ def test_iiif_image_api(
     image.save(tmp_file, "png")
     tmp_file.seek(0)
 
-    response = client.get(
-        f"/iiif/record:{recid}:{file_id}/full/full/0/default.png"
-    )
+    response = client.get(f"/iiif/record:{recid}:{file_id}/full/full/0/default.png")
     assert response.status_code == 200
     assert response.data == tmp_file.getvalue()
 
@@ -181,7 +186,4 @@ def test_iiif_image_api(
             f"200,200,200,200/300,300/!50/color.pdf?dl={dl}"
         )
         assert response.status_code == 200
-        assert (
-            response.headers["Content-Disposition"]
-            == f"attachment; filename={name}"
-        )
+        assert response.headers["Content-Disposition"] == f"attachment; filename={name}"
