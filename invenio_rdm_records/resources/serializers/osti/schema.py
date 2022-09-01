@@ -109,12 +109,12 @@ class OSTISchema(Schema):
 
         if main_value:
             item = strip_html(main_value)
-            result.append(item + " ")
+            result += item + " "
 
         additional_values = obj["metadata"].get(f"additional_{field}s", [])
         for v in additional_values:
             item = strip_html(v.get(field))
-            result.append(item + " ")
+            result += item + " "
 
         return result or missing
 
@@ -151,7 +151,7 @@ class OSTISchema(Schema):
         serialized_identifiers = ''
         for rel_id in identifiers:
             serialized_identifiers = rel_id.get("identifier", "")
-            serialized_identifiers.append(";")
+            serialized_identifiers += ";"
 
         return serialized_identifiers or missing
 
@@ -165,8 +165,8 @@ class OSTISchema(Schema):
         for subject in subjects:
             sub_text = subject.get("subject")
             if sub_text:
-                serialized_subjects.append(sub_text)
-                serialized_subjects.append(";")
+                serialized_subjects += sub_text
+                serialized_subjects += ";"
 
         return serialized_subjects if serialized_subjects else missing
 
