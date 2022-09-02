@@ -17,6 +17,8 @@ from flask_babelex import lazy_gettext as _
 from marshmallow import Schema, ValidationError, fields, missing
 from marshmallow_utils.fields import SanitizedUnicode
 from marshmallow_utils.html import strip_html
+from invenio_records_resources.proxies import current_service_registry
+from invenio_access.permissions import system_identity
 
 
 
@@ -72,7 +74,14 @@ class AuthorSchema(Schema):
             return missing
 
         # OSTI only supports 1 affiliation for an author so just return the first one
-        return affiliations[0].get("name")
+        affiliation = affiliations[0]
+        id_ = affiliation.get("id")
+        if id_:
+            affiliations_service = current_service_registry.get("affiliations")
+            full_affiliation = affiliations_service.read(system_identity, id_, True)
+            return full_affiliation.data["name"]
+        else:
+            return affiliation["name"]
 
 
 class OSTISchema(Schema):
