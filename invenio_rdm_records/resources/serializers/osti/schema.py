@@ -17,6 +17,8 @@ from flask_babelex import lazy_gettext as _
 from marshmallow import Schema, ValidationError, fields, missing
 from marshmallow_utils.fields import SanitizedUnicode
 from marshmallow_utils.html import strip_html
+from invenio_records_resources.proxies import current_service_registry
+from invenio_access.permissions import system_identity
 
 
 
@@ -72,7 +74,14 @@ class AuthorSchema(Schema):
             return missing
 
         # OSTI only supports 1 affiliation for an author so just return the first one
-        return affiliations[0].get("name")
+        affiliation = affiliations[0]
+        id_ = affiliation.get("id")
+        if id_:
+            affiliations_service = current_service_registry.get("affiliations")
+            full_affiliation = affiliations_service.read(system_identity, id_, True)
+            return full_affiliation.data["name"]
+        else:
+            return affiliation["name"]
 
 
 class OSTISchema(Schema):
@@ -109,12 +118,12 @@ class OSTISchema(Schema):
 
         if main_value:
             item = strip_html(main_value)
-            result.append(item + " ")
+            result += item + " "
 
         additional_values = obj["metadata"].get(f"additional_{field}s", [])
         for v in additional_values:
             item = strip_html(v.get(field))
-            result.append(item + " ")
+            result += item + " "
 
         return result or missing
 
@@ -151,7 +160,7 @@ class OSTISchema(Schema):
         serialized_identifiers = ''
         for rel_id in identifiers:
             serialized_identifiers = rel_id.get("identifier", "")
-            serialized_identifiers.append(";")
+            serialized_identifiers += ";"
 
         return serialized_identifiers or missing
 
@@ -165,8 +174,8 @@ class OSTISchema(Schema):
         for subject in subjects:
             sub_text = subject.get("subject")
             if sub_text:
-                serialized_subjects.append(sub_text)
-                serialized_subjects.append(";")
+                serialized_subjects += sub_text
+                serialized_subjects += ";"
 
         return serialized_subjects if serialized_subjects else missing
 
