@@ -1,3 +1,9 @@
+# MSD-LIVE CHANGE NOTES
+# This file only has changes pulled from the fork/branch created to support
+# email notifications being sent WRT records submitted for approval/comments/denial to project
+# see https://github.com/inveniosoftware/invenio-communities/issues/502
+# https://github.com/inveniosoftware/invenio-rdm-records/pull/990/files
+
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2022 CERN.
@@ -10,10 +16,15 @@
 from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_communities.communities.records.systemfields.access import CommunityAccess
+# MSD-LIVE CHANGE BEGIN - merge from rekt-hard:notification-system
+from invenio_communities.members.records.api import Member
+from invenio_communities.proxies import current_communities
+# MSD-LIVE CHANGE END
 from invenio_drafts_resources.services.records import RecordService
 from invenio_records_resources.services.uow import (
     RecordCommitOp,
     RecordIndexOp,
+    TaskOp,
     unit_of_work,
 )
 from invenio_requests import current_request_type_registry, current_requests_service
@@ -27,7 +38,11 @@ from ..errors import (
     ReviewNotFoundError,
     ReviewStateError,
 )
-
+# MSD-LIVE CHANGE BEGIN - merge from rekt-hard:notification-system
+from invenio_requests.notifications.proxies import current_notifications_manager
+from invenio_requests.notifications.models import Notification
+from invenio_requests.notifications.events import CommunitySubmissionSubmittedEvent, CommunitySubmissionCreatedEvent
+# end
 
 class ReviewService(RecordService):
     """Record review service.
@@ -84,6 +99,18 @@ class ReviewService(RecordService):
         # Set the request on the record and commit the record
         record.parent.review = request_item._request
         uow.register(RecordCommitOp(record.parent))
+
+        # MSD-LIVE CHANGE BEGIN - merge from rekt-hard:notification-system
+        # During dev only
+        self._send_notification(
+            CommunitySubmissionCreatedEvent,
+            request_item,
+            uow,
+            community=request_item._request.receiver.resolve(),
+            record=record,
+        )
+        # end
+
         return request_item
 
     def read(self, identity, id_):
@@ -179,4 +206,64 @@ class ReviewService(RecordService):
         uow.register(RecordCommitOp(draft.parent))
         uow.register(RecordIndexOp(draft, indexer=self.indexer))
 
+        # MSD-LIVE CHANGE BEGIN - merge from rekt-hard:notification-system
+        self._send_notification(
+            CommunitySubmissionSubmittedEvent,
+            request_item,
+            uow,
+            community=resolved_community,
+            record=draft,
+        )
+        # end
         return request_item
+
+    # MSD-LIVE CHANGE BEGIN - merge from rekt-hard:notification-system
+    def _send_notification(self, type, request_item, uow, **kwargs):
+        from invenio_access.permissions import system_identity
+        from invenio_users_resources.records.api import UserAggregate
+
+        request = request_item._request
+
+        def create_trigger():
+            created_by = request.created_by.resolve()
+            # User class does not have a dumps method
+            return UserAggregate.from_user(created_by).dumps()
+
+        notification = Notification()
+        notification.type = type.handling_key
+        notification.trigger = create_trigger()
+        recipients = []
+
+        community = kwargs.get("community")
+        record = kwargs.get("record")
+
+        notification.data.update({
+            "community": current_communities.service.read(identity=system_identity, id_=community.id).to_dict(),
+            "request": request_item.to_dict(),
+            # Probably want to dump via service schema, so it has all the links in it as well (if the record is needed at all?)
+            "record": record.dumps(),
+        })
+
+        # construct UI link of request review for use in template (there are request links for API but none for UI)
+        notification.data["request"]["links"].setdefault(
+            "self_html", f'{notification.data["community"]["links"]["self_html"]}/requests/{notification.data["request"]["id"]}',
+        )
+
+        # fetching members based on event (ideally would be defined in the policy as a callable and pass the uow and kwargs?)
+        # passing the notification would allow the callable to modify it, which is undesired
+        if type in [CommunitySubmissionCreatedEvent, CommunitySubmissionSubmittedEvent]:
+            members = Member.get_members(community.id)
+            # get owner, managers and curators. There should be an easier way
+            recipients = [
+                m.relations.user.dereference() for m in members
+                if m.user_id
+                and m.role in ["owner", "manager", "curator"] #
+            ]
+
+        notification.recipients = recipients
+        if not notification.recipients:
+            return
+
+        # should register in uow
+        current_notifications_manager.broadcast(notification=notification)
+        # end
