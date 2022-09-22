@@ -29,7 +29,7 @@ from ..errors import (
     ReviewNotFoundError,
     ReviewStateError,
 )
-
+import os
 
 class ReviewService(RecordService):
     """Record review service.
@@ -197,7 +197,11 @@ class ReviewService(RecordService):
         ]
         recipients = [r["email"] for r in recipients]
 
-        body = f'A new record has been submitted for review.\n\nView submission: {self_html}'
+        environment = os.environ.get('ENVIRONMENT_TYPE', 'unknown');
+        body = ""
+        if environment == 'dev':
+            body = "====================================================\n----- DEV Environment -----\n====================================================\n\n\n"
+        body += f'A new record has been submitted for review.\n\nView submission: {self_html}'
         mail_data = {"recipients": recipients,
                      "body": body,
                      "subject": "New MSD-LIVE Record Submitted For Review",

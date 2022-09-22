@@ -13,7 +13,7 @@ from invenio_requests.customizations import actions
 
 from ..proxies import current_rdm_records_service as service
 from .base import ReviewRequest
-
+import os
 
 #
 # Actions
@@ -84,8 +84,8 @@ class AcceptAction(actions.AcceptAction):
                and m.role in ["owner", "manager", "curator"]  #
         ]
         recipients = [r["email"] for r in recipients]
-
-        body = f'The following record has been accepted and published.\n\nView submission: {self_html}'
+        body = get_email_body()
+        body += f'The following record has been accepted and published.\n\nView submission: {self_html}'
         mail_data = {"recipients": recipients,
                      "body": body,
                      "subject": "MSD-LIVE Record Accepted",
@@ -137,8 +137,8 @@ class DeclineAction(actions.DeclineAction):
                and m.role in ["owner", "manager", "curator"]  #
         ]
         recipients = [r["email"] for r in recipients]
-
-        body = f'The following record has been declined and is back in draft form.\n\nView submission: {self_html}'
+        body = get_email_body()
+        body += f'The following record has been declined and is back in draft form.\n\nView submission: {self_html}'
         mail_data = {"recipients": recipients,
                      "body": body,
                      "subject": "MSD-LIVE Record Declined",
@@ -222,3 +222,9 @@ def send_email(mail_data):
     """Construct and send email."""
     from invenio_mail.tasks import send_email
     send_email(mail_data)
+
+def get_email_body():
+    environment = os.environ.get('ENVIRONMENT_TYPE', 'unknown');
+    if environment == 'dev':
+        return "====================================================\n----- DEV Environment -----\n====================================================\n\n\n"
+    return ""
