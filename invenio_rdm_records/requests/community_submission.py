@@ -88,7 +88,7 @@ class AcceptAction(actions.AcceptAction):
         body = f'The following record has been accepted and published.\n\nView submission: {self_html}'
         mail_data = {"recipients": recipients,
                      "body": body,
-                     "subject": "MSD-LIVE Submission Accepted",
+                     "subject": "MSD-LIVE Record Accepted",
                      "sender": "info@msdlive.org", "cc": ["info@msdlive.org"]}
         send_email.delay(mail_data)
         # MSDLIVE CHANGE END
@@ -141,7 +141,7 @@ class DeclineAction(actions.DeclineAction):
         body = f'The following record has been declined and is back in draft form.\n\nView submission: {self_html}'
         mail_data = {"recipients": recipients,
                      "body": body,
-                     "subject": "MSD-LIVE Submission Declined",
+                     "subject": "MSD-LIVE Record Declined",
                      "sender": "info@msdlive.org", "cc": ["info@msdlive.org"]}
         send_email.delay(mail_data)
         # MSDLIVE CHANGE END
