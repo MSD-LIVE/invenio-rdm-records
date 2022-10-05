@@ -394,7 +394,8 @@ class MetadataSchema(Schema):
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
-
+    # MSD-LIVE CHANGE require version
+    version = SanitizedUnicode(required=True)
     #
     # MSDLIVE CHANGE END
     #
@@ -419,7 +420,7 @@ class MetadataSchema(Schema):
     formats = fields.List(
         SanitizedUnicode(validate=_not_blank(_("Format cannot be a blank string.")))
     )
-    version = SanitizedUnicode()
+
     rights = fields.List(fields.Nested(RightsSchema))
     description = SanitizedHTML(validate=validate.Length(min=3))
     additional_descriptions = fields.List(fields.Nested(DescriptionSchema))
