@@ -394,6 +394,7 @@ class MetadataSchema(Schema):
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
+    msdlive_doi_minting_error = SanitizedUnicode()
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)
     #

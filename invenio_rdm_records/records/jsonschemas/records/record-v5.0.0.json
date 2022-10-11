@@ -28,8 +28,10 @@
       "description": "Resource metadata.",
       "additionalProperties": false,
       "properties": {
-
-
+        "msdlive_doi_minting_error": {
+          "description": "The error that occurred while attempting to mint the DOI.",
+          "type": "string"
+        },
         "msdlive_sectors": {
           "description": "Sectors",
           "type": "array",

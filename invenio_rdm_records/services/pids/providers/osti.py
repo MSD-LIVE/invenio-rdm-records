@@ -6,18 +6,13 @@
 # it under the terms of the MIT License; see LICENSE file for more details.
 
 """DataCite DOI Provider."""
-
 import json
 import warnings
-from invenio_rdm_records.resources.serializers import OSTIJSONSerializer
-
-# TODO Import and use the OSTI python client api instead - consider perhaps just copying it in here as there is hardly anything to it,
-# see: https://github.com/doecode/ostiapi/blob/master/ostiapi/__init__.py
 import ostiapi
-
 from flask import current_app
+from invenio_records_resources.services.uow import RecordCommitOp, unit_of_work
+from invenio_rdm_records.resources.serializers import OSTIJSONSerializer
 from invenio_pidstore.models import PIDStatus
-
 from .base import PIDProvider
 
 class OSTIClient:
@@ -148,7 +143,7 @@ class OSTIPIDProvider(PIDProvider):
                 current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
                 return False
 
-            current_app.logger.info("DOI: " f"{osti_record.get('record').get('doi')}")
+            current_app.logger.info("DOI: " f"{osti_record.get('record').get('doi')}") #record.get('metadata').set
             return osti_record.get('record').get('doi')
         except Exception as e:
             current_app.logger.error("OSTI provider error when "
@@ -190,22 +185,26 @@ class OSTIPIDProvider(PIDProvider):
             doc['contract_nos'] = f"{self.cfg('contract_nos')}"
             doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
             doc['site_url'] = url
-            current_app.logger.info("doc sent to OSTI " f"{doc}")
+            current_app.logger.debug("doc sent to OSTI " f"{doc}")
 
             osti_record = self.client.api.post(doc, username, password)
             error = self.parse_osti_error(osti_record)
             if error:
-                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+                self.persist_minting_error(record, error)
+                current_app.logger.error(f"OSTI returned ERROR status with message: {error}, OSTI record returned: {osti_record}")
                 return False
 
-            current_app.logger.info("osti DOI minted and returned " f"{osti_record}")
+            current_app.logger.debug("osti DOI minted and returned " f"{osti_record}")
             return True
         except Exception as e:
-            current_app.logger.error("OSTI provider error when "
-                                       f"registering DOI for {pid.pid_value}")
-            current_app.logger.error(e)
-
+            self.persist_minting_error(record, str(e))
+            current_app.logger.error(f"OSTI provider error when registering DOI for {pid.pid_value}", exc_info=True)
             return False
+
+    @unit_of_work()
+    def persist_minting_error(self, record, error, uow=None):
+        record.get('metadata').update({'msdlive_doi_minting_error': error})
+        uow.register(RecordCommitOp(record))
 
     def update(self, pid, record, url=None, **kwargs):
         """Update metadata associated with a DOI.
