@@ -1,3 +1,5 @@
+# MSD-LIVE CHANGE letting creator/contributor have multiple roles instead of just 1
+
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2020-2022 CERN.
@@ -152,7 +154,9 @@ class CreatorSchema(Schema):
     """Creator schema."""
 
     person_or_org = fields.Nested(PersonOrOrganizationSchema, required=True)
-    role = fields.Nested(VocabularySchema)
+    # MSD-LIVE CHANGE letting contributors/creators have more than one role
+    # role = fields.Nested(VocabularySchema)
+    roles = fields.List(fields.Nested(VocabularySchema))
     affiliations = fields.List(fields.Nested(AffiliationRelationSchema))
 
 
@@ -160,7 +164,9 @@ class ContributorSchema(Schema):
     """Contributor schema."""
 
     person_or_org = fields.Nested(PersonOrOrganizationSchema, required=True)
-    role = fields.Nested(VocabularySchema, required=True)
+    # MSD-LIVE CHANGE letting contributors/creators have more than one role
+    # role = fields.Nested(VocabularySchema, required=True)
+    roles = fields.List(fields.Nested(VocabularySchema, required=True))
     affiliations = fields.List(fields.Nested(AffiliationRelationSchema))
 
 
