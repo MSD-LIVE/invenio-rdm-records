@@ -181,40 +181,5 @@ class ReviewService(RecordService):
         uow.register(RecordCommitOp(draft.parent))
         uow.register(RecordIndexOp(draft, indexer=self.indexer))
 
-        # MSD-LIVE CHANGE BEGIN send an email about the request
-        from invenio_communities.members.records.api import Member
-        from invenio_access.permissions import system_identity
-        from invenio_communities.proxies import current_communities
-        community = current_communities.service.read(identity=system_identity, id_=resolved_community.id).to_dict()
-        self_html= f'{community["links"]["self_html"]}/requests/{request_item["id"]}'
-
-        members = Member.get_members(resolved_community.id)
-        # get owner, managers and curators. There should be an easier way
-        recipients = [
-            m.relations.user.dereference() for m in members
-            if m.user_id
-               and m.role in ["owner", "manager", "curator"]  #
-        ]
-        recipients = [r["email"] for r in recipients]
-
-        environment = os.environ.get('ENVIRONMENT_TYPE', 'unknown');
-        body = ""
-        if environment == 'dev':
-            body = "====================================================\n----- DEV Environment -----\n====================================================\n\n\n"
-        body += f'A new record has been submitted for review.\n\nView submission: {self_html}'
-        mail_data = {"recipients": recipients,
-                     "body": body,
-                     "subject": "New MSD-LIVE Record Submitted For Review",
-                     "sender": "info@msdlive.org", "cc": ["info@msdlive.org"]}
-        send_email.delay(mail_data)
-        # END
         return request_item
 
-
-# MSD-LIVE CHANGE schedule an email to be sent
-from celery import shared_task
-@shared_task(ignore_result=True)
-def send_email(mail_data):
-    """Construct and send email."""
-    from invenio_mail.tasks import send_email
-    send_email(mail_data)

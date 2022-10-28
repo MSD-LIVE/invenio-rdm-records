@@ -58,7 +58,7 @@ class AcceptAction(actions.AcceptAction):
         )
 
         # MSDLIVE CHANGE BEGIN
-        # 1. let the record belong to all of the selected project/communities
+        # let the record belong to all of the selected project/communities
         projects = draft.metadata.get('msdlive_projects');
         if projects:
             # skip the project that is the same as the community already added
@@ -68,29 +68,6 @@ class AcceptAction(actions.AcceptAction):
                         project.get('id'), request=None, default=False
                     )
 
-        # 2. send an email about the record being accepted
-        from invenio_communities.proxies import current_communities
-        from invenio_communities.members.records.api import Member
-        from invenio_access.permissions import system_identity
-
-        community_dict = current_communities.service.read(identity=system_identity, id_=community.id).to_dict()
-        self_html = f'{community_dict["links"]["self_html"]}/requests/{self.request.id}'
-
-        members = Member.get_members(community.id)
-        # get owner, managers and curators. There should be an easier way
-        recipients = [
-            m.relations.user.dereference() for m in members
-            if m.user_id
-               and m.role in ["owner", "manager", "curator"]  #
-        ]
-        recipients = [r["email"] for r in recipients]
-        body = get_email_body()
-        body += f'The following record has been accepted and published.\n\nView submission: {self_html}'
-        mail_data = {"recipients": recipients,
-                     "body": body,
-                     "subject": "MSD-LIVE Record Accepted",
-                     "sender": "info@msdlive.org", "cc": ["info@msdlive.org"]}
-        send_email.delay(mail_data)
         # MSDLIVE CHANGE END
         uow.register(RecordCommitOp(draft.parent))
 
@@ -119,32 +96,6 @@ class DeclineAction(actions.DeclineAction):
         uow.register(RecordCommitOp(draft.parent))
         # update draft to reflect the new status
         uow.register(RecordIndexOp(draft, indexer=service.indexer))
-
-        # MSD-LIVE CHANGE send an email about the record being declined
-        from invenio_communities.proxies import current_communities
-        from invenio_communities.members.records.api import Member
-        from invenio_access.permissions import system_identity
-
-        community = self.request.receiver.resolve()
-        community_dict = current_communities.service.read(identity=system_identity, id_=community.id).to_dict()
-        self_html = f'{community_dict["links"]["self_html"]}/requests/{self.request.id}'
-
-        members = Member.get_members(community.id)
-        # get owner, managers and curators. There should be an easier way
-        recipients = [
-            m.relations.user.dereference() for m in members
-            if m.user_id
-               and m.role in ["owner", "manager", "curator"]  #
-        ]
-        recipients = [r["email"] for r in recipients]
-        body = get_email_body()
-        body += f'The following record has been declined and is back in draft form.\n\nView submission: {self_html}'
-        mail_data = {"recipients": recipients,
-                     "body": body,
-                     "subject": "MSD-LIVE Record Declined",
-                     "sender": "info@msdlive.org", "cc": ["info@msdlive.org"]}
-        send_email.delay(mail_data)
-        # MSDLIVE CHANGE END
 
 
 class CancelAction(actions.CancelAction):
@@ -213,18 +164,3 @@ class CommunitySubmission(ReviewRequest):
         "decline": DeclineAction,
         "expire": ExpireAction,
     }
-
-
-# MSD-LIVE CHANGE schedule an email to be sent
-from celery import shared_task
-@shared_task(ignore_result=True)
-def send_email(mail_data):
-    """Construct and send email."""
-    from invenio_mail.tasks import send_email
-    send_email(mail_data)
-
-def get_email_body():
-    environment = os.environ.get('ENVIRONMENT_TYPE', 'unknown');
-    if environment == 'dev':
-        return "====================================================\n----- DEV Environment -----\n====================================================\n\n\n"
-    return ""
