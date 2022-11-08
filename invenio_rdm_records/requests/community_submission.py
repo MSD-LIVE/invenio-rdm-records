@@ -99,18 +99,42 @@ class DeclineAction(actions.DeclineAction):
 
 
 class CancelAction(actions.CancelAction):
-    """Decline action."""
+    """Cancel action."""
+
+    # MSD-LIVE CHANGE BEGIN
+    # copy the exact same impl as ExpireAction for execute instead
+    # deleting the review (which removes the record from the community breaking our
+    # custom project drop down UI component
+    # def execute(self, identity, uow):
+    #     """Execute action."""
+    #     # Remove draft from request
+    #     # Same reasoning as in 'decline'
+    #     draft = self.request.topic.resolve()
+    #     draft.parent.review = None
+    #     uow.register(RecordCommitOp(draft.parent))
+    #     # update draft to reflect the new status
+    #     uow.register(RecordIndexOp(draft, indexer=service.indexer))
+    #     super().execute(identity, uow)
+
 
     def execute(self, identity, uow):
         """Execute action."""
-        # Remove draft from request
         # Same reasoning as in 'decline'
         draft = self.request.topic.resolve()
-        draft.parent.review = None
+
+        # TODO: What more to do? simply close the request? Similarly to
+        # decline, how does a user resubmits the request to the same community.
+        super().execute(identity, uow)
+
+        # TODO: this shouldn't be required BUT because of the caching mechanism
+        # in the review systemfield, the review should be set with the updated
+        # request object
+        draft.parent.review = self.request
         uow.register(RecordCommitOp(draft.parent))
         # update draft to reflect the new status
         uow.register(RecordIndexOp(draft, indexer=service.indexer))
-        super().execute(identity, uow)
+
+        # MSD-LIVE CHANGE END
 
 
 class ExpireAction(actions.CancelAction):
