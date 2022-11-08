@@ -12,8 +12,7 @@
 
 from copy import copy
 
-from invenio_drafts_resources.services.records.components import \
-    ServiceComponent
+from invenio_drafts_resources.services.records.components import ServiceComponent
 from invenio_records_resources.services.uow import TaskOp
 
 from ..pids.tasks import register_or_update_pid
@@ -27,13 +26,13 @@ class PIDsComponent(ServiceComponent):
 
         It validates and add the pids to the draft.
         """
-        pids = data.get('pids', {})
+        pids = data.get("pids", {})
         self.service.pids.pid_manager.validate(pids, record, errors)
         record.pids = pids
 
     def update_draft(self, identity, data=None, record=None, errors=None):
         """Update draft handler."""
-        pids = data.get('pids', {})
+        pids = data.get("pids", {})
         self.service.pids.pid_manager.validate(pids, record, errors)
         record.pids = pids
 
@@ -46,8 +45,8 @@ class PIDsComponent(ServiceComponent):
         # ATTENTION: Delete draft is called both for published and unpublished
         # records. Hence, we cannot just delete all PIDs, but only the new
         # unregistered PIDs.
-        to_remove = copy(draft.get('pids', {}))
-        record_pids = record.get('pids', {}).keys() if record else []
+        to_remove = copy(draft.get("pids", {}))
+        record_pids = record.get("pids", {}).keys() if record else []
         for scheme in record_pids:
             to_remove.pop(scheme)
 
@@ -62,22 +61,18 @@ class PIDsComponent(ServiceComponent):
         # changes.
 
         # Extract all PIDs/schemes from the draft and the record
-        draft_pids = draft.get('pids', {})
-        record_pids = copy(record.get('pids', {}))
+        draft_pids = draft.get("pids", {})
+        record_pids = copy(record.get("pids", {}))
         draft_schemes = set(draft_pids.keys())
         record_schemes = set(record_pids.keys())
 
         # Determine schemes which are required, but not yet created.
         missing_required_schemes = (
-            set(self.service.config.pids_required)
-            - record_schemes
-            - draft_schemes
+            set(self.service.config.pids_required) - record_schemes - draft_schemes
         )
 
         # Validate the draft PIDs
-        self.service.pids.pid_manager.validate(
-            draft_pids, record, raise_errors=True
-        )
+        self.service.pids.pid_manager.validate(draft_pids, record, raise_errors=True)
 
         # Detect which PIDs on a published record that has been changed.
         #
@@ -109,8 +104,7 @@ class PIDsComponent(ServiceComponent):
         # UI is not reflecting that - also easier to debug while developing
         # # Async register/update tasks after transaction commit.
         for scheme in pids.keys():
-            self.uow.register(
-                TaskOp(register_or_update_pid, record["id"], scheme))
+            self.uow.register(TaskOp(register_or_update_pid, record["id"], scheme))
 
         # this isn't working because the register_or_update code assumes the record is already
         # published and is getting the record (not the draft) from the service to see what
@@ -129,8 +123,8 @@ class PIDsComponent(ServiceComponent):
         """A new draft should not have any pids from the previous record."""
         # This makes the draft use the same identifier as the previous
         # version
-        if record.pids.get('doi', {}).get('provider') == 'external':
-            draft.pids = {'doi': {'provider': 'external', 'identifier': ''}}
+        if record.pids.get("doi", {}).get("provider") == "external":
+            draft.pids = {"doi": {"provider": "external", "identifier": ""}}
         else:
             draft.pids = {}
 
@@ -140,6 +134,6 @@ class PIDsComponent(ServiceComponent):
         PIDs are taken from the published record so that they cannot be changed
         in the draft.
         """
-        pids = record.get('pids', {})
+        pids = record.get("pids", {})
         self.service.pids.pid_manager.validate(pids, record)
         draft.pids = pids

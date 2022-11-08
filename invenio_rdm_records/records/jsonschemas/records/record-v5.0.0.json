@@ -28,8 +28,10 @@
       "description": "Resource metadata.",
       "additionalProperties": false,
       "properties": {
-
-
+        "msdlive_doi_minting_error": {
+          "description": "The error that occurred while attempting to mint the DOI.",
+          "type": "string"
+        },
         "msdlive_sectors": {
           "description": "Sectors",
           "type": "array",
@@ -122,7 +124,7 @@
             "additionalProperties": false,
             "properties": {
                 "person_or_org": {"$ref": "local://records/definitions-v2.0.0.json#/person_or_org"},
-                "role": {"$ref": "local://records/definitions-v2.0.0.json#/role"},
+                "roles": {"$ref": "local://records/definitions-v2.0.0.json#/roles"},
                 "affiliations": {"$ref": "local://records/definitions-v2.0.0.json#/affiliations"}
             }
           }

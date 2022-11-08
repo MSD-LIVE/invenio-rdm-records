@@ -401,6 +401,11 @@
       }
     }
   },
+  "roles": {
+    "type": "array",
+    "items": {"$ref": "#/role"},
+    "uniqueItems": true
+  },
   "role": {
     "description": "Role of creator/contributor.",
     "type": "object",

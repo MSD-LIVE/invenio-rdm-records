@@ -12,8 +12,6 @@ from io import BytesIO
 from PIL import Image
 from tripoli import IIIFValidator
 
-from tests.helpers import login_user, logout_user
-
 
 def publish_record_with_images(
     client, file_id, record, headers, restricted_files=False
@@ -25,12 +23,12 @@ def publish_record_with_images(
 
     # Create a draft
     res = client.post("/records", headers=headers, json=record)
-    id_ = res.json['id']
+    id_ = res.json["id"]
 
     # create a new image
-    res = client.post(f"/records/{id_}/draft/files", headers=headers, json=[
-        {'key': file_id}
-    ])
+    res = client.post(
+        f"/records/{id_}/draft/files", headers=headers, json=[{"key": file_id}]
+    )
 
     # Upload a file
     image_file = BytesIO()
@@ -39,14 +37,12 @@ def publish_record_with_images(
     image_file.seek(0)
     res = client.put(
         f"/records/{id_}/draft/files/{file_id}/content",
-        headers={'content-type': 'application/octet-stream'},
+        headers={"content-type": "application/octet-stream"},
         data=image_file,
     )
 
     # Commit the file
-    res = client.post(
-        f"/records/{id_}/draft/files/{file_id}/commit", headers=headers
-    )
+    res = client.post(f"/records/{id_}/draft/files/{file_id}/commit", headers=headers)
 
     # Publish the record
     res = client.post(f"/records/{id_}/draft/actions/publish", headers=headers)
@@ -55,13 +51,11 @@ def publish_record_with_images(
 
 
 def test_iiif_manifest_schema(
-    running_app, es_clear, client_with_login, headers, minimal_record
+    running_app, es_clear, client, uploader, headers, minimal_record
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}/manifest")
     manifest = response.json
     validator = IIIFValidator(fail_fast=False)
@@ -70,21 +64,16 @@ def test_iiif_manifest_schema(
 
 
 def test_iiif_manifest(
-    running_app, es_clear, client_with_login, headers, minimal_record
+    running_app, es_clear, client, uploader, headers, minimal_record
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}/manifest")
     assert response.status_code == 200
 
     manifest = response.json
-    assert (
-        manifest["@id"]
-        == f"https://127.0.0.1:5000/api/iiif/record:{recid}/manifest"
-    )
+    assert manifest["@id"] == f"https://127.0.0.1:5000/api/iiif/record:{recid}/manifest"
     assert manifest["label"] == "A Romans story"
     assert "sequences" in manifest
     assert len(manifest["sequences"]) == 1
@@ -100,8 +89,7 @@ def test_iiif_manifest(
     canvas = sequence["canvases"][0]
     assert (
         canvas["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}/canvas/test_image.png"
+        == f"https://127.0.0.1:5000/api/iiif/record:{recid}/canvas/test_image.png"
     )
     assert canvas["height"] == 1024
     assert canvas["width"] == 1280
@@ -113,37 +101,47 @@ def test_iiif_manifest(
     assert image["resource"]["height"] == 1024
     assert image["resource"]["width"] == 1280
     assert (
-        image["resource"]["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/"
+        image["resource"]["@id"] == f"https://127.0.0.1:5000/api/iiif/"
         f"record:{recid}:{file_id}/full/full/0/default.png"
     )
     assert (
         image["resource"]["service"]["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}/info.json"
+        == f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}"
     )
+
+
+def test_empty_iiif_manifest(
+    running_app, es_clear, client, uploader, headers, minimal_record
+):
+    client = uploader.login(client)
+    file_id = "test_image.zip"
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
+    response = client.get(f"/iiif/record:{recid}/manifest")
+    assert response.status_code == 200
+    manifest = response.json
+    assert not manifest["sequences"][0]["canvases"]
 
 
 def test_iiif_manifest_restricted_files(
     running_app,
     es_clear,
-    client_with_login,
+    client,
+    uploader,
     headers,
     minimal_record,
     users,
 ):
-    client = client_with_login
+    client = uploader.login(client)
     file_id = "test_image.png"
     recid = publish_record_with_images(
         client, file_id, minimal_record, headers, restricted_files=True
     )
-    logout_user(client)
+    client = uploader.logout(client)
     response = client.get(f"/iiif/record:{recid}/manifest")
     # TODO: should we return only the parts the user has access to?
     assert response.status_code == 403
 
     # Log in user and try again
-    login_user(client, users[0])
+    client = uploader.login(client)
     response = client.get(f"/iiif/record:{recid}/manifest")
     assert response.status_code == 200
