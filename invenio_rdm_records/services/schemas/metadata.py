@@ -212,6 +212,12 @@ class ModelSchema(Schema):
 
     model = SanitizedUnicode()
 
+class FileLocationSchema(Schema):
+    """Schema for the MSD-LIVE File Location"""
+
+    external_description = SanitizedHTML(required=False, validate=validate.Length(min=3))
+    location_type = SanitizedUnicode()
+
 #
 # MSDLIVE CHANGE END
 #
@@ -400,6 +406,7 @@ class MetadataSchema(Schema):
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
+    msdlive_file_location = fields.Nested(FileLocationSchema)
     msdlive_doi_minting_error = SanitizedUnicode()
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)
