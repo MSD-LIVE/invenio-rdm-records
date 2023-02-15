@@ -8,11 +8,13 @@
 
 """Permissions for Invenio RDM Records."""
 
+# MSDLIVE-CHANGE letting admins delete published records
 from invenio_records_permissions.generators import (
     AnyUser,
     AuthenticatedUser,
     Disable,
     SystemProcess,
+    Admin,
 )
 from invenio_records_permissions.policies.records import RecordPermissionPolicy
 
@@ -119,8 +121,9 @@ class RDMRecordPermissionPolicy(RecordPermissionPolicy):
     #
     # - Records/files are updated/deleted via drafts so we don't support
     #   using below actions.
-    can_update = [Disable()]
-    can_delete = [Disable()]
-    can_create_files = [Disable()]
-    can_update_files = [Disable()]
-    can_delete_files = [Disable()]
+    # MSD-LIVE CHANGE # MSDLIVE-CHANGE letting admins (only admins) do things to published records
+    can_update = [Admin()]
+    can_delete = [Admin()]
+    can_create_files = [Admin()]
+    can_update_files = [Admin()]
+    can_delete_files = [Admin()]
