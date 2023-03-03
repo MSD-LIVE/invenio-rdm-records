@@ -66,8 +66,6 @@ class RecordAccess:
 
         if self.embargo.active:
             status = AccessStatusEnum.EMBARGOED
-        # where i left off - this is where metadata-only is getting set, need to figure out path forward
-        # it doesn't make sense why metadata-only is a type of access but is used thru-out
         elif self.protection.record == "public" and not self.has_files:
             status = AccessStatusEnum.METADATA_ONLY
         elif self.protection.record == self.protection.files == "public":
