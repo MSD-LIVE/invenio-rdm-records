@@ -212,6 +212,35 @@ class ModelSchema(Schema):
 
     model = SanitizedUnicode()
 
+class FileLocationSchema(Schema):
+    @validates_schema
+    def validate_external_description(self, data, **kwargs):
+        """Validates that external_description contains something if 'external' selected for type."""
+        location_type = data.get("location_type")
+        external_description = data.get("external_description")
+        if location_type == "external" and not external_description:
+            raise ValidationError(
+                _("Description is required"), "external_description"
+            )
+
+
+    """Schema for the MSD-LIVE File Location"""
+    TYPES = ["local", "external"]
+
+    external_description = SanitizedHTML(required=True, validate=validate.Length(min=3))
+    # location_type = SanitizedUnicode()
+    location_type = SanitizedUnicode(
+        required=True,
+        validate=validate.OneOf(
+            choices=TYPES,
+            error=_("Invalid value. Choose one of {TYPES}.").format(TYPES=TYPES),
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [_("Invalid value. Choose one of {TYPES}.").format(TYPES=TYPES)]
+        },
+    )
+
 #
 # MSDLIVE CHANGE END
 #
@@ -400,6 +429,7 @@ class MetadataSchema(Schema):
     msdlive_temporals = fields.List(fields.Nested(TemporalSchema))
     msdlive_spatials = fields.List(fields.Nested(TemporalSchema))
     msdlive_models = fields.List(fields.Nested(ModelSchema))
+    msdlive_file_location = fields.Nested(FileLocationSchema)
     msdlive_doi_minting_error = SanitizedUnicode()
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)

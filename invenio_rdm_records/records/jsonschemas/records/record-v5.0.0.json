@@ -113,6 +113,20 @@
             }
           }
         },
+        "msdlive_file_location": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+              "external_description": {
+                "description": "Description of the file location if external",
+                "type": "string"
+              },
+              "location_type": {
+                "description": "file location (external or local)",
+                "type": "string"
+              }
+          }
+        },
 
         "resource_type": {"$ref": "local://records/definitions-v2.0.0.json#/resource_type"},
 
