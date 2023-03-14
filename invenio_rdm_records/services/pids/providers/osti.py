@@ -210,7 +210,7 @@ class OSTIPIDProvider(PIDProvider):
         record.get('metadata').update({'msdlive_doi_minting_error': error})
         uow.register(RecordCommitOp(record))
 
-    def update(self, pid, record, url=None, **kwargs):
+    def update(self, pid, record=None, **kwargs):
         """Update metadata associated with a DOI.
 
         This can be called before/after a DOI is registered.
@@ -223,6 +223,8 @@ class OSTIPIDProvider(PIDProvider):
         # update that draft as many times as you'd like (this update method NOT called) but once the updates are done the publish
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
+            import pydevd_pycharm
+            pydevd_pycharm.settrace('host.docker.internal', port=12345, stdoutToServer=True, stderrToServer=True)
             # Set metadata
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
@@ -231,7 +233,7 @@ class OSTIPIDProvider(PIDProvider):
             doc['contract_nos'] = f"{self.cfg('contract_nos')}"
             doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
             doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
-            doc['site_url'] = url
+            doc['site_url'] = kwargs.get('url')
 
             current_app.logger.info("doc sent to OSTI " f"{doc}")
             osti_record = self.client.api.post(doc, username, password)
