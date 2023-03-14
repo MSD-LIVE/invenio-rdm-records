@@ -134,15 +134,7 @@ class PIDsService(RecordService):
         pid = self._manager.read(scheme, pid_attrs["identifier"], pid_attrs["provider"])
         if pid.is_registered():
             self.require_permission(identity, "pid_update", record=record)
-
-            # If re-sending DOI update to OSTI, we want to pass the site url again in case the registration failed
-            # the first time.
-            links = self.links_item_tpl.expand(record)
-            url = links["self_html"]
-            if f"self_{scheme}" in links:
-                url = links[f"self_{scheme}"]
-
-            self._manager.update(record, scheme, url=url)
+            self._manager.update(record, scheme)
         else:
             self.require_permission(identity, "pid_register", record=record)
             # Determine landing page (use scheme specific if available)
