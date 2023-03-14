@@ -11,9 +11,12 @@ import warnings
 import ostiapi
 from flask import current_app
 from invenio_records_resources.services.uow import RecordCommitOp, unit_of_work
+from marshmallow_utils.html import strip_html
+
 from invenio_rdm_records.resources.serializers import OSTIJSONSerializer
 from invenio_pidstore.models import PIDStatus
 from .base import PIDProvider
+
 
 class OSTIClient:
     """OSTI Client."""
@@ -172,7 +175,7 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
         try:
-            doc = self.serializer.dump_one(record)
+            doc = self._corrected_dump_one(record)
             username = self.cfg('username')
             password = self.cfg('password')
             prefix = self.cfg('accession_number_prefix')
@@ -185,6 +188,7 @@ class OSTIPIDProvider(PIDProvider):
             doc['contract_nos'] = f"{self.cfg('contract_nos')}"
             doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
             doc['site_url'] = url
+
             current_app.logger.debug("doc sent to OSTI " f"{doc}")
 
             osti_record = self.client.api.post(doc, username, password)
@@ -219,11 +223,12 @@ class OSTIPIDProvider(PIDProvider):
         # update that draft as many times as you'd like (this update method NOT called) but once the updates are done the publish
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
+
             # Set metadata
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
             password = self.cfg('password')
-            doc = self.serializer.dump_one(record)
+            doc = self._corrected_dump_one(record)
             doc['contract_nos'] = f"{self.cfg('contract_nos')}"
             doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
             doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
@@ -272,6 +277,76 @@ class OSTIPIDProvider(PIDProvider):
         _, errors = super().validate(record, identifier, provider, **kwargs)
 
         return (True, []) if not errors else (False, errors)
+
+    def _corrected_dump_one(self, record):
+        """-------------------------------------------------------------------------------------------------------------
+        RDM's marshmallow serializer munges all of the description fields into a single description, which can fail
+        for OSTI because it has a 12000 character limit!
+
+        Example dump_one results:
+        {'title': 'Carina Test DOI 3',
+         'description': 'This is a description. This is an abstract. This is teh methods. ',
+         'dataset_type': 'SM',
+         'keywords': 'test;',
+         'publication_date': '03/14/2023',
+         'authors': [{'last_name': 'Lansing', 'first_name': 'Carina'}],
+         'accession_num': 'MSDLIVE-tx6gn-71y72',
+         'contract_nos': '80478',
+         'sponsor_org': 'USDOE Office of Science (SC), Biological and Environmental Research (BER)',
+         'site_url': 'http://127.0.0.1/doi/10.11578/1529383'}
+
+         Example record contents:
+        {'id': 'tx6gn-71y72',
+         'pid': {'pk': 15077, 'status': 'R', 'obj_type': 'rec', 'pid_type': 'recid'},
+         'pids': {'doi': {'client': 'osti',
+           'provider': 'osti',
+           'identifier': '10.11578/1529383'}},
+         'files': {'enabled': False},
+         'access': {'files': 'public',
+          'record': 'public',
+          'embargo': {'until': None, 'active': False, 'reason': None}},
+         '$schema': 'local://records/record-v5.0.0.json',
+         'metadata': {'title': 'Carina Test DOI 3',
+          'rights': [{'id': 'CC-BY-4.0'}],
+          'version': 'v1',
+          'creators': [{'person_or_org': {'name': 'Lansing, Carina',
+             'type': 'personal',
+             'given_name': 'Carina',
+             'family_name': 'Lansing'}}],
+          'subjects': [{'subject': 'test'}],
+          'publisher': 'MSD-LIVE Data Repository',
+          'description': '<p>This is a description.</p>',
+          'resource_type': {'id': 'publication'},
+          'msdlive_projects': [{'id': 'e9b4b8b1-6f1f-45f5-b2db-69e5255a8526',
+            'name': 'State.'}],
+          'publication_date': '2023-03-14',
+          'additional_descriptions': [{'type': {'id': 'abstract'},
+            'description': '<p>This is an abstract.</p>'},
+           {'type': {'id': 'methods'}, 'description': '<p>This is teh methods.</p>'}]}}
+
+
+        :param record:
+        :return:
+        -------------------------------------------------------------------------------------------------------------"""
+        doc = self.serializer.dump_one(record)
+        metadata = record.get('metadata')
+
+        # First see if the record has an abstract.  If it does, use that for the description.
+        abstract = None
+        additional_descriptions = metadata.get('additional_descriptions', [])
+        for desc in additional_descriptions:
+            type = desc.get('type', {}).get('id')
+            if type == 'abstract':
+                abstract = desc.get('description')
+
+        abstract = metadata.get('description') if not abstract else abstract
+
+        # Strip off html tags
+        abstract = strip_html(abstract)
+
+        doc['description'] = abstract
+
+        return doc
 
     def _get_dummy_metadata(self, contract_nos, sponsor_org):
         return {
