@@ -223,8 +223,6 @@ class OSTIPIDProvider(PIDProvider):
         # update that draft as many times as you'd like (this update method NOT called) but once the updates are done the publish
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
-            import pydevd_pycharm
-            pydevd_pycharm.settrace('host.docker.internal', port=12345, stdoutToServer=True, stderrToServer=True)
             # Set metadata
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
