@@ -155,6 +155,7 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
     def parse_osti_error(self, osti_record):
+        # TODO add more logic to catch case when OSTI's validation fails (i.e. too long of an abstract)
         if osti_record.get("status") == "FAILURE":
             return osti_record.get("status_message")
 
