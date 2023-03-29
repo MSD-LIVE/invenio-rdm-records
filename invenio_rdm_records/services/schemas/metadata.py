@@ -227,7 +227,7 @@ class FileLocationSchema(Schema):
     """Schema for the MSD-LIVE File Location"""
     TYPES = ["local", "external"]
 
-    external_description = SanitizedHTML(required=True, validate=validate.Length(min=3))
+    external_description = SanitizedHTML(required=False, validate=validate.Length(min=3))
     # location_type = SanitizedUnicode()
     location_type = SanitizedUnicode(
         required=True,

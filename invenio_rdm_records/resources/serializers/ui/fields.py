@@ -137,7 +137,29 @@ class AccessStatusField(fields.Field):
     def _serialize(self, value, attr, obj, **kwargs):
         """Serialise access status."""
         record_access_dict = obj.get("access")
-        has_files = obj.get("files").get("enabled", False)
+        # MSD-LIVE CHANGE to use our new prop instead
+        msdlive_file_location = obj.get("metadata").get("msdlive_file_location").get('location_type', 'local')
+        # has_files = obj.get("files").get("enabled", False)
+        has_files = msdlive_file_location == 'local'
+
+        # also fix apparent bug with RDM that sets all drafts to metadata only
+        files_access = record_access_dict.get('files')
+        record_access = record_access_dict.get('record')
+        embargoed = record_access_dict.get('embargo').get('active')
+        if embargoed:
+            record_access_dict["status"] = AccessStatusEnum.EMBARGOED.value
+        # case where user selects to restrict the files (not the record) and doesn't unselect it but then changes record to be 'external'
+        # for msdlive_file_location - we want metadata only displayed, not 'restricted' in search results ui
+        elif files_access == 'restricted' and not has_files and not record_access == 'restricted':
+            record_access_dict["status"] = AccessStatusEnum.METADATA_ONLY.value
+        elif files_access == 'restricted' or record_access == 'restricted':
+            record_access_dict["status"] = AccessStatusEnum.RESTRICTED.value
+        elif not has_files:
+            record_access_dict["status"] = AccessStatusEnum.METADATA_ONLY.value
+        else:
+            record_access_dict["status"] = AccessStatusEnum.OPEN.value
+
+        # MSD-LIVE CHANGE end
         if record_access_dict:
             record_access_status_ui = UIObjectAccessStatus(
                 record_access_dict, has_files
