@@ -112,7 +112,7 @@ class ReviewService(RecordService):
 
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
         from msdlive_rdm_contrib.service_extensions import MSDLiveReviewServiceExtension
-        MSDLiveReviewServiceExtension().update(identity, draft, data)
+        MSDLiveReviewServiceExtension().assign_reviewing_project(identity, draft, data)
 
         return self.create(identity, data, draft, uow=uow)
 
