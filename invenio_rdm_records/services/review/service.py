@@ -111,8 +111,8 @@ class ReviewService(RecordService):
             draft = self.draft_cls.pid.resolve(id_, registered_only=False)
 
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
-        from msdlive_rdm_contrib.service_extensions import MSDLiveReviewServiceExtension
-        MSDLiveReviewServiceExtension().assign_reviewing_project(identity, draft, data)
+        from msdlive_rdm_contrib.service_extensions import AccessPointService
+        AccessPointService().init_files(identity, draft, data)
 
         return self.create(identity, data, draft, uow=uow)
 
