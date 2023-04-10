@@ -138,7 +138,7 @@ class AccessStatusField(fields.Field):
         """Serialise access status."""
         record_access_dict = obj.get("access")
         # MSD-LIVE CHANGE to use our new prop instead
-        msdlive_file_location = obj.get("metadata").get("msdlive_file_location").get('location_type', 'local')
+        msdlive_file_location = obj.get("metadata", {}).get("msdlive_file_location", {}).get('location_type', 'local')
         # has_files = obj.get("files").get("enabled", False)
         has_files = msdlive_file_location == 'local'
 
