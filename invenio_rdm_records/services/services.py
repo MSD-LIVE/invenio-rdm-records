@@ -114,6 +114,10 @@ class RDMRecordService(RecordService):
         if not record.access.lift_embargo():
             raise EmbargoNotLiftedError(_id)
 
+        # MSD-LIVE CHANGE call our service to update s3's access point policy:
+        from msdlive_rdm_contrib.service_extensions import AccessPointService
+        AccessPointService().make_public(identity, record)
+
         uow.register(RecordCommitOp(record, indexer=self.indexer))
 
     def scan_expired_embargos(self, identity):
