@@ -59,14 +59,29 @@ class AcceptAction(actions.AcceptAction):
 
         # MSDLIVE CHANGE BEGIN
         # let the record belong to all of the selected project/communities
-        projects = draft.metadata.get('msdlive_projects');
+        projects = draft.metadata.get('msdlive_projects')
         if projects:
             # skip the project that is the same as the community already added
+            # no longer have to skip since we are no longer storing community with msdlive_projects
+            # ?but maybe instead I'll need to add the community TO the msdlive_projects in order for UI
+            # of published records still work?
             for project in projects:
                 if project.get('id') != str(community.id):
                     draft.parent.communities.add(
                         project.get('id'), request=None, default=False
                     )
+        else:
+            projects = []
+        # also add the selected parent community to the list of msdlive_projects
+        add = {
+            'id': str(community.id),
+            'name': community.metadata.get('title')
+        }
+        projects.append(add)
+        draft.metadata['msdlive_projects'] = projects
+        # have to register the commit operation for this record as part of the uow otherwise the addition of the reviewing
+        # project to the msdlive_projects won't be saved to the database
+        uow.register(RecordCommitOp(draft))
 
         # MSDLIVE CHANGE END
         uow.register(RecordCommitOp(draft.parent))
