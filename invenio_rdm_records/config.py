@@ -254,6 +254,11 @@ RDM_FACETS = {
             'field': 'msdlive_models.model',
         }
     },
+    'file_status': {
+        'facet': facets.file_status,
+        'ui': {
+        }
+    },
 #
 # MSDLIVE CHANGE END
 #

@@ -19,9 +19,10 @@ from invenio_vocabularies.services.facets import VocabularyLabels
 
 from ..records.systemfields.access.field.record import AccessStatusEnum
 
+# MSDLIVE CHANGE IN GENERAL - changed facet labels to have all words init upper cased
 access_status = TermsFacet(
     field="access.status",
-    label=_("Access status"),
+    label=_("Access Status"),
     value_labels={
         AccessStatusEnum.OPEN.value: _("Open"),
         AccessStatusEnum.EMBARGOED.value: _("Embargoed"),
@@ -49,7 +50,7 @@ resource_type = NestedTermsFacet(
     field="metadata.resource_type.props.type",
     subfield="metadata.resource_type.props.subtype",
     splitchar="::",
-    label=_("Resource types"),
+    label=_("Resource Types"),
     value_labels=VocabularyLabels("resourcetypes"),
 )
 
@@ -98,6 +99,19 @@ msdlive_model = TermsFacet(
     field='metadata.msdlive_models.model.keyword',
     label=_('Model'),
 )
+
+
+# Add facets for how we've replaced RDM's concept of metadata-only
+# Open, Metadata only, Restricted, Partially Restricted, Embargoed
+file_status = TermsFacet(
+    field='metadata.msdlive_file_location.location_type.keyword',
+    label='File Status',
+    value_labels={
+        'local': 'In MSD-LIVE',
+        'external': 'Metadata-only',
+    },
+)
+
 #
 # MSDLIVE CHANGE END
 #
