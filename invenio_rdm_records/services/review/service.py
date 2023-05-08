@@ -112,7 +112,9 @@ class ReviewService(RecordService):
 
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
         from msdlive_rdm_contrib.service_extensions import AccessPointService
-        AccessPointService().init_files(identity, draft, data)
+        from msdlive_rdm_contrib.shared.aws_session import AwsSession
+        with AwsSession() as aws_session:
+            AccessPointService(aws_session).init_files(identity, draft, data)
 
         return self.create(identity, data, draft, uow=uow)
 

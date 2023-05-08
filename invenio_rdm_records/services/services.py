@@ -116,7 +116,9 @@ class RDMRecordService(RecordService):
 
         # MSD-LIVE CHANGE call our service to update s3's access point policy:
         from msdlive_rdm_contrib.service_extensions import AccessPointService
-        AccessPointService().make_public(identity, record)
+        from msdlive_rdm_contrib.shared.aws_session import AwsSession
+        with AwsSession() as aws_session:
+            AccessPointService(aws_session).make_public(identity, record)
 
         uow.register(RecordCommitOp(record, indexer=self.indexer))
 
