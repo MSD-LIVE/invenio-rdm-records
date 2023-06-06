@@ -155,6 +155,7 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
     def parse_osti_error(self, osti_record):
+        # TODO add more logic to catch case when OSTI's validation fails (i.e. too long of an abstract)
         if osti_record.get("status") == "FAILURE":
             return osti_record.get("status_message")
 
@@ -223,7 +224,6 @@ class OSTIPIDProvider(PIDProvider):
         # update that draft as many times as you'd like (this update method NOT called) but once the updates are done the publish
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
-
             # Set metadata
             prefix = self.cfg('accession_number_prefix')
             username = self.cfg('username')
