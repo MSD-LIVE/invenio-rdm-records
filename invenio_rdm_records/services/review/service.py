@@ -31,6 +31,7 @@ from ..errors import (
 )
 import os
 
+
 class ReviewService(RecordService):
     """Record review service.
 
@@ -111,10 +112,11 @@ class ReviewService(RecordService):
             draft = self.draft_cls.pid.resolve(id_, registered_only=False)
 
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
-        from msdlive_rdm_contrib.service_extensions import AccessPointService
+        from msdlive_rdm_contrib.shared.cloud_data_service import CloudDataService
         from msdlive_rdm_contrib.shared.aws_session import AwsSession
+
         with AwsSession() as aws_session:
-            AccessPointService(aws_session).init_files(identity, draft, data)
+            CloudDataService(aws_session).init_files_hook(identity, draft, data)
 
         return self.create(identity, data, draft, uow=uow)
 
@@ -188,4 +190,3 @@ class ReviewService(RecordService):
         uow.register(RecordIndexOp(draft, indexer=self.indexer))
 
         return request_item
-
