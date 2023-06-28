@@ -77,7 +77,7 @@ class AcceptAction(actions.AcceptAction):
             'id': str(community.id),
             'name': community.metadata.get('title')
         }
-        projects.append(add)
+        projects.insert(0, add)
         draft.metadata['msdlive_projects'] = projects
         # have to register the commit operation for this record as part of the uow otherwise the addition of the reviewing
         # project to the msdlive_projects won't be saved to the database

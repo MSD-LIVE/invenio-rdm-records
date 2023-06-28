@@ -342,9 +342,9 @@ class OSTIPIDProvider(PIDProvider):
         abstract = metadata.get('description') if not abstract else abstract
 
         # Strip off html tags
-        abstract = strip_html(abstract)
-
-        doc['description'] = abstract
+        if abstract:
+            abstract = strip_html(abstract)
+            doc['description'] = abstract
 
         return doc
 

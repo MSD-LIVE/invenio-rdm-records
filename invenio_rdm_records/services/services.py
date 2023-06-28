@@ -115,10 +115,11 @@ class RDMRecordService(RecordService):
             raise EmbargoNotLiftedError(_id)
 
         # MSD-LIVE CHANGE call our service to update s3's access point policy:
-        from msdlive_rdm_contrib.service_extensions import AccessPointService
+        from msdlive_rdm_contrib.shared.cloud_data_service import CloudDataService
         from msdlive_rdm_contrib.shared.aws_session import AwsSession
+
         with AwsSession() as aws_session:
-            AccessPointService(aws_session).make_public(identity, record)
+            CloudDataService(aws_session).make_public_hook(identity, record)
 
         uow.register(RecordCommitOp(record, indexer=self.indexer))
 
