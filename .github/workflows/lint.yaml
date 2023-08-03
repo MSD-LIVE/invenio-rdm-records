@@ -2,4 +2,4 @@ name: Enforce Linting Rules
 on: [push, pull_request]
 jobs:
   check-python-format:
-    uses: MSD-LIVE/msdlive-rdm-app/.github/workflows/lint.yaml@dev
+    uses: MSD-LIVE/msdlive-shared-workflows/.github/workflows/lint.yaml@main
