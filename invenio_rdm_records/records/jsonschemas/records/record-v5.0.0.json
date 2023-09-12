@@ -320,18 +320,7 @@
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
-                  "geometry": {
-                    "allOf": [{
-                      "$ref": "local://records/definitions-v2.0.0.json#/GeoJSON-Geometry"
-                    }, {
-                      "$comment": "Bounding boxes (`bbox`) are forbidden on our geometries, even though they're allowed on GeoJSON geometries",
-                      "properties": {
-                        "type": {},
-                        "coordinates": {}
-                      },
-                      "additionalProperties": false
-                    }]
-                  },
+                  "geometry": {},
                   "identifiers": {
                     "type": "array",
                     "items": {"$ref": "local://definitions-v1.0.0.json#/identifiers_with_scheme"},
