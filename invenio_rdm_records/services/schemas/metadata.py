@@ -401,6 +401,8 @@ class FeatureSchema(Schema):
     """Location feature schema."""
 
     # MSDLIVE CHANGE to better performance don't define locations schema, allow any JSON
+    # Allowing any JSON means that the marshmallow_utils geojson validation is skipped and it
+    # is what was limiting the geojson to be only Point, Multipoint and Polygon. (see marshmallow_utils/schemas/geojson.py line 76)
     # features = fields.List(fields.Nested(LocationSchema))
     features = fields.Raw()
 
