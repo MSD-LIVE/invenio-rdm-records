@@ -111,6 +111,7 @@ class OSTISchema(Schema):
 
         return osti_type
 
+    # can move _corrected_dump_one from osti.py logic to here
     def _merge_main_and_additional(self, obj, field):
         """Return merged list of main + additional titles/descriptions."""
         result = ''

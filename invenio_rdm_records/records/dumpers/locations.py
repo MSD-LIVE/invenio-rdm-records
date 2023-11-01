@@ -1,3 +1,5 @@
+# MSDLIVE CHANGE removed code to calculate centroid to better performance
+
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2020 CERN.
@@ -32,21 +34,23 @@ class LocationsDumper(ElasticsearchDumperExt):
 
     def dump(self, record, data):
         """Dump the data."""
-        if "locations" not in data.get("metadata", {}):
-            return data
-        for feature in data["metadata"]["locations"]["features"]:
-            geometry = feature.get("geometry")
-            if geometry:
-                if geometry["type"] == "Point":
-                    feature["centroid"] = geometry["coordinates"]
-                elif shapely:
-                    centroid = shapely.geometry.shape(geometry).centroid
-                    feature["centroid"] = [centroid.x, centroid.y]
-                else:
-                    warnings.warn(
-                        "Trying to find centroid for non-point geometry, but "
-                        "shapely isn't installed."
-                    )
+        # MSD-LIVE CHANGE removed centroid logic
+        return data
+        # if "locations" not in data.get("metadata", {}):
+        #     return data
+        # for feature in data["metadata"]["locations"]["features"]:
+        #     geometry = feature.get("geometry")
+        #     if geometry:
+        #         if geometry["type"] == "Point":
+        #             feature["centroid"] = geometry["coordinates"]
+        #         elif shapely:
+        #             centroid = shapely.geometry.shape(geometry).centroid
+        #             feature["centroid"] = [centroid.x, centroid.y]
+        #         else:
+        #             warnings.warn(
+        #                 "Trying to find centroid for non-point geometry, but "
+        #                 "shapely isn't installed."
+        #             )
 
     def load(self, data, record_cls):
         """Load the data."""
