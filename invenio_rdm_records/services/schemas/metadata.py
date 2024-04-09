@@ -37,6 +37,8 @@ from marshmallow_utils.fields import (
 )
 from marshmallow_utils.schemas import GeometryObjectSchema, IdentifierSchema
 from werkzeug.local import LocalProxy
+# MSD-LIVE CHANGE adding requests to validate github url
+import requests
 
 record_personorg_schemes = LocalProxy(
     lambda: current_app.config["RDM_RECORDS_PERSONORG_SCHEMES"]
@@ -186,13 +188,25 @@ class FileExploration(Schema):
     
     @validates_schema
     def validate_kernel(self, data, **kwargs):
-        """Validates that kernel is selected if notebooks status is enabled"""
+        """Validates that kernel is selected if notebooks status is enabled and that github url is valid."""
         status = data.get("status")
         kernel = data.get("kernel")
-        if status is "enabled" and not kernel:
-            raise ValidationError(
-                _("Kernel is required"), "kernel"
-            )
+        github_url = data.get("github_url")
+        if status == "enabled":
+            if kernel is None:
+                raise ValidationError(
+                    "Kernel is required", field_name="kernel"
+                )
+            if github_url:
+                error_message = 'Invalid github url. Please make sure the url is correct and the repo is public.'
+                try:
+                    response = requests.head(github_url)
+                    if not 200 <= response.status_code < 300:
+                        raise ValidationError(error_message, field_name="github_url")
+                except requests.exceptions.RequestException:
+                    raise ValidationError(error_message, field_name="github_url")
+            
+        
     
     KERNELS = ["Python", "R", "Julia"]
     STATUS = ["enabled", "disabled"]
