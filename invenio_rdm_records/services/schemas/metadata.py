@@ -181,6 +181,46 @@ class TitleSchema(Schema):
 # MSDLIVE CHANGE BEGIN - adding custom metadata
 #
 
+class FileExploration(Schema):
+    """Schema for jupyter exploration"""
+    
+    @validates_schema
+    def validate_kernel(self, data, **kwargs):
+        """Validates that kernel is selected if notebooks status is enabled"""
+        status = data.get("status")
+        kernel = data.get("kernel")
+        if status is "enabled" and not kernel:
+            raise ValidationError(
+                _("Kernel is required"), "kernel"
+            )
+    
+    KERNELS = ["Python", "R", "Julia"]
+    STATUS = ["enabled", "disabled"]
+    
+    status = SanitizedUnicode(required=True,
+        validate=validate.OneOf(
+            choices=STATUS,
+            error=_("Invalid value. Choose one of {STATUS}.").format(STATUS=STATUS),
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
+        },
+    )
+    
+    kernel = SanitizedUnicode(required=False,
+        validate=validate.OneOf(
+            choices=KERNELS,
+            error=_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS),
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
+        },
+    )
+    github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
+    
+    
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
 
@@ -429,6 +469,7 @@ class MetadataSchema(Schema):
     msdlive_models = fields.List(fields.Nested(ModelSchema))
     msdlive_file_location = fields.Nested(FileLocationSchema)
     msdlive_doi_minting_error = SanitizedUnicode()
+    msdlive_file_exploration = fields.Nested(FileExploration, required=True)
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)
     #
