@@ -211,7 +211,8 @@ class FileExploration(Schema):
     KERNELS = ["Python", "R", "Julia"]
     STATUS = ["enabled", "disabled"]
     
-    status = SanitizedUnicode(required=True,
+    # status = SanitizedUnicode(required=True,
+    status = SanitizedUnicode(required=False,
         validate=validate.OneOf(
             choices=STATUS,
             error=_("Invalid value. Choose one of {STATUS}.").format(STATUS=STATUS),
@@ -483,7 +484,8 @@ class MetadataSchema(Schema):
     msdlive_models = fields.List(fields.Nested(ModelSchema))
     msdlive_file_location = fields.Nested(FileLocationSchema)
     msdlive_doi_minting_error = SanitizedUnicode()
-    msdlive_file_exploration = fields.Nested(FileExploration, required=True)
+    # msdlive_file_exploration = fields.Nested(FileExploration, required=True)
+    msdlive_file_exploration = fields.Nested(FileExploration, required=False)
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)
     #
