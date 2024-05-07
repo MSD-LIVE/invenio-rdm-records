@@ -37,6 +37,8 @@ from marshmallow_utils.fields import (
 )
 from marshmallow_utils.schemas import GeometryObjectSchema, IdentifierSchema
 from werkzeug.local import LocalProxy
+# MSD-LIVE CHANGE adding requests to validate github url
+import requests
 
 record_personorg_schemes = LocalProxy(
     lambda: current_app.config["RDM_RECORDS_PERSONORG_SCHEMES"]
@@ -181,6 +183,59 @@ class TitleSchema(Schema):
 # MSDLIVE CHANGE BEGIN - adding custom metadata
 #
 
+class FileExploration(Schema):
+    """Schema for jupyter exploration"""
+    
+    @validates_schema
+    def validate_kernel(self, data, **kwargs):
+        """Validates that kernel is selected if notebooks status is enabled and that github url is valid."""
+        status = data.get("status")
+        kernel = data.get("kernel")
+        github_url = data.get("github_url")
+        if status == "enabled":
+            if kernel is None:
+                raise ValidationError(
+                    "Kernel is required", field_name="kernel"
+                )
+            if github_url:
+                error_message = 'Invalid github url. Please make sure the url is correct and the repo is public.'
+                try:
+                    response = requests.head(github_url)
+                    if not 200 <= response.status_code < 300:
+                        raise ValidationError(error_message, field_name="github_url")
+                except requests.exceptions.RequestException:
+                    raise ValidationError(error_message, field_name="github_url")
+            
+        
+    
+    KERNELS = ["Python", "R", "Julia"]
+    STATUS = ["enabled", "disabled"]
+    
+    # status = SanitizedUnicode(required=True,
+    status = SanitizedUnicode(required=False,
+        validate=validate.OneOf(
+            choices=STATUS,
+            error=_("Invalid value. Choose one of {STATUS}.").format(STATUS=STATUS),
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
+        },
+    )
+    
+    kernel = SanitizedUnicode(required=False,
+        validate=validate.OneOf(
+            choices=KERNELS,
+            error=_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS),
+        ),
+        error_messages={
+            # [] needed to mirror error message above
+            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
+        },
+    )
+    github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
+    
+    
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
 
@@ -429,6 +484,8 @@ class MetadataSchema(Schema):
     msdlive_models = fields.List(fields.Nested(ModelSchema))
     msdlive_file_location = fields.Nested(FileLocationSchema)
     msdlive_doi_minting_error = SanitizedUnicode()
+    # msdlive_file_exploration = fields.Nested(FileExploration, required=True)
+    msdlive_file_exploration = fields.Nested(FileExploration, required=False)
     # MSD-LIVE CHANGE require version
     version = SanitizedUnicode(required=True)
     #

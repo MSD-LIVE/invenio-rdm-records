@@ -28,6 +28,34 @@
       "description": "Resource metadata.",
       "additionalProperties": false,
       "properties": {
+        "msdlive_file_exploration": {
+          "description": "Info allowing end users the ability to explore or subset this dataset via Jupyter notebooks.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "description": "Whether or not the to allow Jupyter exploration.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kernel": {
+              "description": "Kernel that notebook will run in.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "github_url": {
+              "description": "Github url to notebook.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
         "msdlive_doi_minting_error": {
           "description": "The error that occurred while attempting to mint the DOI.",
           "type": "string"
