@@ -233,6 +233,9 @@ class FileExploration(Schema):
         },
     )
     github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
+    datasync_arn = SanitizedUnicode(required=False)
+    datasync_task_execution_arn = SanitizedUnicode(required=False)
+    exceeds_fs_limit = fields.Bool(allow_none=True, required=False)
     
     
 class SectorSchema(Schema):

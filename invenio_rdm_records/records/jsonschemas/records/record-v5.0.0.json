@@ -53,6 +53,27 @@
                 "string",
                 "null"
               ]
+            },
+            "datasync_arn": {
+              "description": "ARN for datasync task specific to this dataset to use to sync s3 files to efs",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "datasync_task_execution_arn": {
+              "description": "ARN for datasync task execution",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "exceeds_fs_limit": {
+              "description": "does the dataset's total file size exceed the limit",
+              "type": [
+                "boolean",
+                "null"
+              ]
             }
           }
         },

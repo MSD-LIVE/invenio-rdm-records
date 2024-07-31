@@ -112,6 +112,8 @@ class ReviewService(RecordService):
             draft = self.draft_cls.pid.resolve(id_, registered_only=False)
 
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
+        # we put this here instead of using the create hook on the record because we have to wait until the 
+        # record is asssigned to a community :(
         from msdlive_rdm_contrib.shared.cloud_data_service import CloudDataService
         from msdlive_rdm_contrib.shared.aws_session import AwsSession
 
