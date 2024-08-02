@@ -115,10 +115,12 @@ class ReviewService(RecordService):
         # we put this here instead of using the create hook on the record because we have to wait until the 
         # record is asssigned to a community :(
         from msdlive_rdm_contrib.shared.cloud_data_service import CloudDataService
+        from msdlive_rdm_contrib.jupyter_notebooks.notebook_file_system_service import NotebookFileSystemService
         from msdlive_rdm_contrib.shared.aws_session import AwsSession
 
         with AwsSession() as aws_session:
             CloudDataService(aws_session).init_files_hook(identity, draft, data)
+            NotebookFileSystemService(aws_session).draft_created(draft=draft, data=data, slug=None)
 
         return self.create(identity, data, draft, uow=uow)
 
