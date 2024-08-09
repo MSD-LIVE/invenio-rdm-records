@@ -1,3 +1,5 @@
+# MSD-LIVE CHANGE - added to new_version_skip_fields as we don't want metadata related to 
+# datasync to be copied to the new version
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2020-2021 CERN.
@@ -42,3 +44,8 @@ class MetadataComponent(ServiceComponent):
         # (publication date and version)
         for f in self.new_version_skip_fields:
             draft.metadata.pop(f, None)
+            
+        # MSD-LIVE CHANGE BEGIN remove datasync related metadata but not the notebook's
+        if "msdlive_file_exploration" in draft.metadata:
+            draft.metadata["msdlive_file_exploration"].pop("datasync_arn", None)
+        
