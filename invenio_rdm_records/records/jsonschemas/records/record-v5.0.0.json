@@ -33,12 +33,9 @@
           "type": "object",
           "additionalProperties": true,
           "properties": {
-            "status": {
+            "enabled": {
               "description": "Whether or not the to allow Jupyter exploration.",
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": ["boolean", "null"]
             },
             "kernel": {
               "description": "Kernel that notebook will run in.",
