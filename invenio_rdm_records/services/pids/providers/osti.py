@@ -344,6 +344,8 @@ class OSTIPIDProvider(PIDProvider):
         # Strip off html tags
         if abstract:
             abstract = strip_html(abstract)
+            # OSTI will throw an error if abstract is longer than 12000 characters
+            abstract = abstract[:12000]
             doc['description'] = abstract
 
         return doc
