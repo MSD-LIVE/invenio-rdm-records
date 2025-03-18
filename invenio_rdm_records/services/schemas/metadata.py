@@ -188,11 +188,10 @@ class FileExploration(Schema):
     
     @validates_schema
     def validate_kernel(self, data, **kwargs):
-        """Validates that kernel is selected if notebooks status is enabled and that github url is valid."""
-        status = data.get("status")
+        """Validates that kernel is selected if notebooks enabled and that github url is valid."""
         kernel = data.get("kernel")
         github_url = data.get("github_url")
-        if status == "enabled":
+        if data.get("enabled", False):
             if kernel is None:
                 raise ValidationError(
                     "Kernel is required", field_name="kernel"
@@ -205,24 +204,10 @@ class FileExploration(Schema):
                         raise ValidationError(error_message, field_name="github_url")
                 except requests.exceptions.RequestException:
                     raise ValidationError(error_message, field_name="github_url")
-            
         
     
     KERNELS = ["Python", "R", "Julia"]
-    STATUS = ["enabled", "disabled"]
-    
-    # status = SanitizedUnicode(required=True,
-    status = SanitizedUnicode(required=False,
-        validate=validate.OneOf(
-            choices=STATUS,
-            error=_("Invalid value. Choose one of {STATUS}.").format(STATUS=STATUS),
-        ),
-        error_messages={
-            # [] needed to mirror error message above
-            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
-        },
-    )
-    
+    enabled = fields.Bool(allow_none=True, load_default=None)
     kernel = SanitizedUnicode(required=False,
         validate=validate.OneOf(
             choices=KERNELS,
