@@ -219,6 +219,7 @@ class FileExploration(Schema):
         },
     )
     github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
+    datasync_arn = SanitizedUnicode(required=False)
     
     
 class SectorSchema(Schema):

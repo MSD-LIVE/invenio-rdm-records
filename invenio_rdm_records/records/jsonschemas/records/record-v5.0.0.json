@@ -55,6 +55,13 @@
                 "string",
                 "null"
               ]
+            },
+            "datasync_arn": {
+              "description": "ARN to the datasync task for the draft.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         },
