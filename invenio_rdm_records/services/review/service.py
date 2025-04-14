@@ -114,9 +114,19 @@ class ReviewService(RecordService):
         # MSD-LIVE hooking into update this way since this service doesn't run components like other services
         from msdlive_rdm_contrib.shared.cloud_data_service import CloudDataService
         from msdlive_rdm_contrib.shared.aws_session import AwsSession
+        from invenio_communities import current_communities
+        from msdlive_rdm_contrib.jupyter_notebooks.service_factory import create_notebook_file_system_service
 
         with AwsSession() as aws_session:
-            CloudDataService(aws_session).init_files_hook(identity, draft, data)
+            community_id = data.get("receiver").get("community")
+            community = current_communities.service.read(
+                id_=community_id, identity=identity
+            )
+            slug = community.data.get("slug")
+            CloudDataService(aws_session).init_files_hook(identity, draft, slug)
+            # also create the datasync task
+            nb_fs = create_notebook_file_system_service(aws_session)
+            nb_fs.draft_created(draft=draft, data=data, slug=slug)
 
         return self.create(identity, data, draft, uow=uow)
 
