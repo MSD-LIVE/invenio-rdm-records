@@ -155,9 +155,22 @@
               }
           }
         },
-
-        "resource_type": {"$ref": "local://records/definitions-v2.0.0.json#/resource_type"},
-
+        "msdlive_science_themes": {
+          "description": "Science Theme",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "science_theme": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "resource_type": {
+          "$ref": "local://records/definitions-v2.0.0.json#/resource_type"
+        },
         "creators": {
           "description": "Creators of the resource.",
           "type": "array",
