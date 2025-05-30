@@ -146,7 +146,7 @@ class OSTIPIDProvider(PIDProvider):
                 # site_ownership_code=prefix, #Zoe commented this out and added line below, I think AI had this wrong
                 site_ownership_code=site_ownership_code,
                 product_type=ProductType.Dataset.value,  # Default to Dataset type
-                site_unique_id=f"{prefix}-{record.pid.pid_value}"
+                site_unique_id=f"{prefix}-{record.pid.pid_value}" # Docs say: Site-specified unique accession number for this record
             )
             
             current_app.logger.info(f"Record being sent to OSTI for DOI reservation: {elink_record}")
