@@ -8,7 +8,8 @@
 """DataCite DOI Provider."""
 import json
 import warnings
-import ostiapi
+from elinkapi import Elink
+from elinkapi.record import Record, ProductType
 from flask import current_app
 from invenio_records_resources.services.uow import RecordCommitOp, unit_of_work
 from marshmallow_utils.html import strip_html
@@ -56,24 +57,33 @@ class OSTIClient:
 
         OSTI change - prefix has a different meaning now, not used as part of the DOI but as part of the accession_num
         """
-        if not (self.cfg('username') and self.cfg('password')
-                and self.cfg('accession_number_prefix')):
+        if not (self.cfg('api_token') and self.cfg('accession_number_prefix')):
             warnings.warn(
                 f"The {self.__class__.__name__} is misconfigured. Please "
-                f"set {self.cfgkey('username')}, {self.cfgkey('password')}"
-                f" and {self.cfgkey('accession_number_prefix')} in your configuration.",
+                f"set {self.cfgkey('api_token')} and {self.cfgkey('accession_number_prefix')} "
+                f"in your configuration.",
                 UserWarning
             )
 
     @property
     def api(self):
-        """DataCite REST API client instance."""
+        """OSTI E-Link API client instance."""
         if self._api is None:
             self.check_credentials()
-            self._api = ostiapi
+            # Initialize Elink client
+            self._api = Elink()
+            
+            # Set API token
+            api_token = self.cfg('api_token')
+            if api_token:
+                self._api.set_api_token(api_token)
+            
+            # Set target URL based on test mode
             if self.cfg('test_mode'):
-                self._api.testmode()
-
+                self._api.set_target_url('https://review.osti.gov/elink2api')  # Test URL
+            else:
+                self._api.set_target_url('https://www.osti.gov/elink2api')  # Production URL
+                
         return self._api
 
 
@@ -118,36 +128,41 @@ class OSTIPIDProvider(PIDProvider):
         # This is called when user clicks button in UI to reserve a DOI for a draft
 
         # OSTI change: instead of generating the doi locally by combining the prefix and invenio's record's pid
-        # call the osti python api to reserve the DOI. We can pick the accession_num that will be used later to update the
-        # record in OSTI (like when it's published or when we need to update the metadata) so in order for accession_num
+        # call the osti python api to reserve the DOI. We can pick the site_unique_id that will be used later to update the
+        # record in OSTI (like when it's published or when we need to update the metadata) so in order for site_unique_id
         # to uniquely identify the record in OSTI and in our system we combine record.pid.pid_value with the accession_number_prefix
         try:
             prefix = self.cfg('accession_number_prefix')
-            username = self.cfg('username')
-            password = self.cfg('password')
-            # do NOT run the serializer dump_one as it will also validate the record and records do not need to have all required
-            # fields entered before reserving a DOI (the dump_one code will throw an exception if the record isn't valid)
-            # doc = self.serializer.dump_one(record)
-            doc = {
-                "title": "Placeholder Title"
-            }
+            site_ownership_code = self.cfg('site_ownership_code')
+            
+            # Create a minimal record for DOI reservation
+            title = "Placeholder Title"
             if record.get('metadata').get('title'):
-                doc['title']=record.get('metadata').get('title')
-            doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
-            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
-            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
-            current_app.logger.info("doc being sent to OSTI: " f"{doc}")
-            osti_record = self.client.api.reserve(
-                doc,
-                username, password)
-            current_app.logger.info("osti record returned from reserve" f"{osti_record}")
-            error = self.parse_osti_error(osti_record)
-            if error:
-                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+                title = record.get('metadata').get('title')
+                
+            # Create an OSTI record
+            elink_record = Record(
+                title=title,
+                # site_ownership_code=prefix, #Zoe commented this out and added line below, I think AI had this wrong
+                site_ownership_code=site_ownership_code,
+                product_type=ProductType.Dataset.value,  # Default to Dataset type
+                site_unique_id=f"{prefix}-{record.pid.pid_value}"
+            )
+            
+            current_app.logger.info(f"Record being sent to OSTI for DOI reservation: {elink_record}")
+            
+            # Reserve the DOI
+            osti_record = self.client.api.reserve_doi(elink_record)
+            
+            current_app.logger.info(f"OSTI record returned from reserve_doi: {osti_record}")
+            
+            # Check for errors
+            if not osti_record or not osti_record.doi:
+                current_app.logger.error("OSTI returned ERROR status when reserving a DOI")
                 return False
 
-            current_app.logger.info("DOI: " f"{osti_record.get('record').get('doi')}") #record.get('metadata').set
-            return osti_record.get('record').get('doi')
+            current_app.logger.info(f"DOI: {osti_record.doi}")
+            return osti_record.doi
         except Exception as e:
             current_app.logger.error("OSTI provider error when "
                                        f"reserving a DOI for record {record.pid.pid_value}")
@@ -155,9 +170,16 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
     def parse_osti_error(self, osti_record):
-        # TODO add more logic to catch case when OSTI's validation fails (i.e. too long of an abstract)
-        if osti_record.get("status") == "FAILURE":
-            return osti_record.get("status_message")
+        """Parse error from OSTI response.
+        
+        The new elinkapi library returns objects rather than dictionaries,
+        so we need to handle errors differently.
+        """
+        # If the record is None or doesn't have a doi, it's an error
+        if not osti_record or not hasattr(osti_record, 'doi') or not osti_record.doi:
+            return "Failed to get a valid response from OSTI"
+        
+        return None
 
     def can_modify(self, pid, **kwargs):
         """Checks if the PID can be modified."""
@@ -176,30 +198,73 @@ class OSTIPIDProvider(PIDProvider):
             return False
 
         try:
+            # Get serialized data from the current serializer
             doc = self._corrected_dump_one(record)
-            username = self.cfg('username')
-            password = self.cfg('password')
             prefix = self.cfg('accession_number_prefix')
-
-            # first generate the accession_num (A site-specified unique identifier to optionally identify the record) for this record
-            # in the same way as was done in the generate_id method above and add it to the doc that the serializer returns
-            # we need to pass this so OSTI will mint the already created DOI instead of generating a new one
-            # always generate and send the accession_num to use with future calls to OSTI's api for this record (i.e. to mint or update an already minted):
-            doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
-            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
-            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
-            doc['site_url'] = url
-
-            current_app.logger.debug("doc sent to OSTI " f"{doc}")
-
-            osti_record = self.client.api.post(doc, username, password)
-            error = self.parse_osti_error(osti_record)
-            if error:
+            site_ownership_code = self.cfg('site_ownership_code')
+            
+            # Create an OSTI record
+            elink_record = Record(
+                title=doc.get('title'),
+                description=doc.get('description'),
+                product_type=ProductType.Dataset.value,
+                site_ownership_code=site_ownership_code,
+                site_unique_id=f"{prefix}-{record.pid.pid_value}",
+                site_url=url,
+            )
+            
+            # Add authors if available
+            if 'authors' in doc and doc['authors']:
+                from elinkapi.person import Person
+                persons = []
+                for author in doc['authors']:
+                    person = Person(
+                        type='AUTHOR',
+                        first_name=author.get('first_name', ''),
+                        last_name=author.get('last_name', ''),
+                        contributor_type='Researcher'
+                    )
+                    # Add affiliation if available
+                    if 'affiliation_name' in author:
+                        person.organization_name = author.get('affiliation_name')
+                    # Add ORCID if available
+                    if 'orcid_id' in author:
+                        person.orcid_id = author.get('orcid_id')
+                    persons.append(person)
+                elink_record.persons = persons
+            
+            # Add keywords if available
+            if 'keywords' in doc and doc['keywords']:
+                keywords = doc['keywords'].split(';')
+                # Remove empty strings
+                keywords = [k.strip() for k in keywords if k.strip()]
+                if keywords:
+                    elink_record.keywords = keywords
+            
+            # Add publication date if available
+            if 'publication_date' in doc:
+                from datetime import datetime
+                try:
+                    # Convert from MM/DD/YYYY to datetime.date
+                    date_parts = doc['publication_date'].split('/')
+                    if len(date_parts) == 3:
+                        month, day, year = map(int, date_parts)
+                        elink_record.publication_date = datetime(year, month, day).date()
+                except Exception as e:
+                    current_app.logger.warning(f"Could not parse publication date: {e}")
+            
+            current_app.logger.debug(f"Record being sent to OSTI: {elink_record}")
+            
+            # Register the DOI
+            osti_record = self.client.api.post_new_record(elink_record, state='submit')
+            
+            if not osti_record or not osti_record.doi:
+                error = "Failed to register DOI with OSTI"
                 self.persist_minting_error(record, error)
-                current_app.logger.error(f"OSTI returned ERROR status with message: {error}, OSTI record returned: {osti_record}")
+                current_app.logger.error(error)
                 return False
 
-            current_app.logger.debug("osti DOI minted and returned " f"{osti_record}")
+            current_app.logger.debug(f"OSTI DOI minted and returned: {osti_record.doi}")
             return True
         except Exception as e:
             self.persist_minting_error(record, str(e))
@@ -224,24 +289,73 @@ class OSTIPIDProvider(PIDProvider):
         # update that draft as many times as you'd like (this update method NOT called) but once the updates are done the publish
         # button is clicked on the new version's draft in the UI and only THEN is this update method is called.
         try:
-            # Set metadata
-            prefix = self.cfg('accession_number_prefix')
-            username = self.cfg('username')
-            password = self.cfg('password')
+            # Get serialized data from the current serializer
             doc = self._corrected_dump_one(record)
-            doc['contract_nos'] = f"{self.cfg('contract_nos')}"
-            doc['sponsor_org'] = f"{self.cfg('sponsor_org')}"
-            doc['accession_num'] = f"{prefix}-{record.pid.pid_value}"
-            doc['site_url'] = kwargs.get('url')
-
-            current_app.logger.info("doc sent to OSTI " f"{doc}")
-            osti_record = self.client.api.post(doc, username, password)
-            error = self.parse_osti_error(osti_record)
-            if error:
-                current_app.logger.error("OSTI returned ERROR status with message " f"{error}" " " f"full record: {osti_record}")
+            prefix = self.cfg('accession_number_prefix')
+            
+            # Create an OSTI record
+            elink_record = Record(
+                title=doc.get('title'),
+                description=doc.get('description'),
+                product_type=ProductType.Dataset.value,
+                site_ownership_code=prefix,
+                site_unique_id=f"{prefix}-{record.pid.pid_value}",
+                site_url=kwargs.get('url'),
+            )
+            
+            # Add authors if available
+            if 'authors' in doc and doc['authors']:
+                from elinkapi.person import Person
+                persons = []
+                for author in doc['authors']:
+                    person = Person(
+                        type='AUTHOR',
+                        first_name=author.get('first_name', ''),
+                        last_name=author.get('last_name', ''),
+                        contributor_type='Researcher'
+                    )
+                    # Add affiliation if available
+                    if 'affiliation_name' in author:
+                        person.organization_name = author.get('affiliation_name')
+                    # Add ORCID if available
+                    if 'orcid_id' in author:
+                        person.orcid_id = author.get('orcid_id')
+                    persons.append(person)
+                elink_record.persons = persons
+            
+            # Add keywords if available
+            if 'keywords' in doc and doc['keywords']:
+                keywords = doc['keywords'].split(';')
+                # Remove empty strings
+                keywords = [k.strip() for k in keywords if k.strip()]
+                if keywords:
+                    elink_record.keywords = keywords
+            
+            # Add publication date if available
+            if 'publication_date' in doc:
+                from datetime import datetime
+                try:
+                    # Convert from MM/DD/YYYY to datetime.date
+                    date_parts = doc['publication_date'].split('/')
+                    if len(date_parts) == 3:
+                        month, day, year = map(int, date_parts)
+                        elink_record.publication_date = datetime(year, month, day).date()
+                except Exception as e:
+                    current_app.logger.warning(f"Could not parse publication date: {e}")
+            
+            current_app.logger.info(f"Record being sent to OSTI for update: {elink_record}")
+            
+            # Get the OSTI ID from the DOI
+            osti_id = pid.pid_value
+            
+            # Update the DOI
+            osti_record = self.client.api.update_record(osti_id, elink_record, state='submit')
+            
+            if not osti_record:
+                current_app.logger.error("OSTI returned ERROR status when updating DOI")
                 return False
 
-            current_app.logger.info("osti record returned from reserve" f"{json.dumps(osti_record)}")
+            current_app.logger.info(f"DOI updated: {osti_record.doi}")
             return True
         except Exception as e:
             current_app.logger.error("DataCite provider error when "
@@ -350,21 +464,33 @@ class OSTIPIDProvider(PIDProvider):
 
         return doc
 
-    def _get_dummy_metadata(self, contract_nos, sponsor_org):
-        return {
-              "title": "My upcoming dataset",
-              "dataset_type": "IP",
-              "contract_nos": f"{contract_nos}",
-              "sponsor_org": f"{sponsor_org}",
-              "site_url": "https://sbrsfa.velo.pnnl.gov/datasets/?UUID=d2f86d79-d582-4dea-929b-eefe4ab34052#metadata2",
-              "publication_date": "06/01/2022",
-              "authors": [
-                {
-                  "first_name": "Neal",
-                  "last_name": "Ensor",
-                  "affiliation_name": "DOE OSTI",
-                  "private_email": "ensorn@osti.gov",
-                  "orcid_id": "0000-0001-5166-5705"
-                }
-              ]
-            }
+    def _get_dummy_metadata(self, prefix):
+        """Create a dummy record for testing."""
+        from elinkapi.record import Record
+        from elinkapi.person import Person
+        from datetime import datetime
+        
+        
+        site_ownership_code = self.cfg('site_ownership_code')
+        # Create a person
+        person = Person(
+            type='AUTHOR',
+            first_name='Neal',
+            last_name='Ensor',
+            email=['ensorn@osti.gov'],
+            orcid='0000-0001-5166-5705',
+            contributor_type='Researcher'
+        )
+        
+        # Create a record
+        record = Record(
+            title='My upcoming dataset',
+            product_type=ProductType.Dataset.value,
+            site_ownership_code=site_ownership_code,
+            site_unique_id=f"{prefix}-test-123",
+            site_url='https://sbrsfa.velo.pnnl.gov/datasets/?UUID=d2f86d79-d582-4dea-929b-eefe4ab34052#metadata2',
+            publication_date=datetime(2022, 6, 1).date(),
+            persons=[person]
+        )
+        
+        return record
