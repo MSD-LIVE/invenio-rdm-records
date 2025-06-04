@@ -14,6 +14,8 @@
 from functools import partial
 from urllib import parse
 
+# MSD-LIVE CHANGE adding requests to validate github url
+import requests
 from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_vocabularies.contrib.affiliations.schema import AffiliationRelationSchema
@@ -37,8 +39,6 @@ from marshmallow_utils.fields import (
 )
 from marshmallow_utils.schemas import GeometryObjectSchema, IdentifierSchema
 from werkzeug.local import LocalProxy
-# MSD-LIVE CHANGE adding requests to validate github url
-import requests
 
 record_personorg_schemes = LocalProxy(
     lambda: current_app.config["RDM_RECORDS_PERSONORG_SCHEMES"]
@@ -179,13 +179,15 @@ class TitleSchema(Schema):
     type = fields.Nested(VocabularySchema, required=True)
     lang = fields.Nested(VocabularySchema)
 
+
 #
 # MSDLIVE CHANGE BEGIN - adding custom metadata
 #
 
+
 class FileExploration(Schema):
     """Schema for jupyter exploration"""
-    
+
     @validates_schema
     def validate_kernel(self, data, **kwargs):
         """Validates that kernel is selected if notebooks enabled and that github url is valid."""
@@ -193,49 +195,54 @@ class FileExploration(Schema):
         github_url = data.get("github_url")
         if data.get("enabled", False):
             if kernel is None:
-                raise ValidationError(
-                    "Kernel is required", field_name="kernel"
-                )
+                raise ValidationError("Kernel is required", field_name="kernel")
             if github_url:
-                error_message = 'Invalid github url. Please make sure the url is correct and the repo is public.'
+                error_message = "Invalid github url. Please make sure the url is correct and the repo is public."
                 try:
                     response = requests.head(github_url)
                     if not 200 <= response.status_code < 300:
                         raise ValidationError(error_message, field_name="github_url")
                 except requests.exceptions.RequestException:
                     raise ValidationError(error_message, field_name="github_url")
-        
-    
+
     KERNELS = ["Python", "R", "Julia"]
     enabled = fields.Bool(allow_none=True, load_default=None)
-    kernel = SanitizedUnicode(required=False,
+    kernel = SanitizedUnicode(
+        required=False,
         validate=validate.OneOf(
             choices=KERNELS,
             error=_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS),
         ),
         error_messages={
             # [] needed to mirror error message above
-            "required": [_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)]
+            "required": [
+                _("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)
+            ]
         },
     )
-    github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
+    github_url = SanitizedUnicode(
+        required=False, validate=_valid_url(_("Not a valid URL."))
+    )
     datasync_arn = SanitizedUnicode(required=False)
-    
-    
+
+
 class ScienceThemeSchema(Schema):
     """Schema for the MSD-LIVE science theme"""
 
     science_theme = SanitizedUnicode()
-    
+
+
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
 
     sector = SanitizedUnicode()
 
+
 class ScenarioSchema(Schema):
     """Schema for the MSD-LIVE scenario"""
 
     scenario = SanitizedUnicode()
+
 
 class ProjectSchema(Schema):
     """Schema for the MSD-LIVE project"""
@@ -243,20 +250,24 @@ class ProjectSchema(Schema):
     id = SanitizedUnicode()
     name = SanitizedUnicode()
 
+
 class TemporalSchema(Schema):
     """Schema for the MSD-LIVE temporal resolution"""
 
     resolution = SanitizedUnicode()
+
 
 class SpatialSchema(Schema):
     """Schema for the MSD-LIVE spatial resolution"""
 
     resolution = SanitizedUnicode()
 
+
 class ModelSchema(Schema):
     """Schema for the MSD-LIVE Model"""
 
     model = SanitizedUnicode()
+
 
 class FileLocationSchema(Schema):
     @validates_schema
@@ -266,14 +277,15 @@ class FileLocationSchema(Schema):
         external_description = data.get("external_description")
         if location_type == "external" and not external_description:
             raise ValidationError(
-                _("Description is required"), "external_description"
+                _("Data access instructions are required"), "external_description"
             )
-
 
     """Schema for the MSD-LIVE File Location"""
     TYPES = ["local", "external"]
 
-    external_description = SanitizedHTML(required=False, validate=validate.Length(min=3))
+    external_description = SanitizedHTML(
+        required=False, validate=validate.Length(min=3)
+    )
     # location_type = SanitizedUnicode()
     location_type = SanitizedUnicode(
         required=True,
@@ -286,6 +298,7 @@ class FileLocationSchema(Schema):
             "required": [_("Invalid value. Choose one of {TYPES}.").format(TYPES=TYPES)]
         },
     )
+
 
 #
 # MSDLIVE CHANGE END
@@ -399,7 +412,7 @@ class ReferenceSchema(IdentifierSchema):
         super().__init__(
             allowed_schemes=record_references_schemes,
             identifier_required=False,
-            **kwargs
+            **kwargs,
         )
 
     reference = SanitizedUnicode(required=True)

@@ -437,13 +437,11 @@ RDM_PERSISTENT_IDENTIFIERS = {
 OSTI_ENABLED = False
 """Flag to enable/disable DOI registration to OSTI."""
 
-
-OSTI_USERNAME = ""
-"""OSTI username."""
-
-
-OSTI_PASSWORD = ""
+OSTI_API_TOKEN = ""
 """OSTI password."""
+
+OSTI_SITE_OWNERSHIP_CODE = "MSD-LIVE"
+"""Required by OSTI's api in order to register DOIs"""
 
 OSTI_ACCESSION_NUMBER_PREFIX = ""
 """Prefix to use to generate OSTI accession_num to uniquely identify records that have gotten DOI's reserved"""
