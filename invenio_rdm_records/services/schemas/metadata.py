@@ -237,10 +237,13 @@ class FileExploration(Schema):
             ]
         },
     )
-    github_url = SanitizedUnicode(
-        required=False, validate=_valid_url(_("Not a valid URL."))
-    )
+    github_url = SanitizedUnicode(required=False, validate=_valid_url(_("Not a valid URL.")))
 
+
+class ScienceThemeSchema(Schema):
+    """Schema for the MSD-LIVE science theme"""
+
+    science_theme = SanitizedUnicode()
 
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
@@ -490,6 +493,7 @@ class MetadataSchema(Schema):
     #
     # MSDLIVE CHANGE BEGIN - adding custom metadata
     #
+    msdlive_science_themes = fields.List(fields.Nested(ScienceThemeSchema))
     msdlive_sectors = fields.List(fields.Nested(SectorSchema))
     msdlive_scenarios = fields.List(fields.Nested(ScenarioSchema))
     msdlive_projects = fields.List(fields.Nested(ProjectSchema))
