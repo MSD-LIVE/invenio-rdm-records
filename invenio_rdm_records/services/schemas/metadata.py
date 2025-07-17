@@ -220,6 +220,7 @@ class FileExploration(Schema):
             ]
         },
     )
+
     github_url = SanitizedUnicode(
         required=False, validate=_valid_url(_("Not a valid URL."))
     )
@@ -230,7 +231,6 @@ class ScienceThemeSchema(Schema):
     """Schema for the MSD-LIVE science theme"""
 
     science_theme = SanitizedUnicode()
-
 
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
