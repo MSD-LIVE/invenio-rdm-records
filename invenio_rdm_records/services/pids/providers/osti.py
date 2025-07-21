@@ -267,7 +267,7 @@ class OSTIPIDProvider(PIDProvider):
                 Organization(
                     type="SPONSOR", 
                     name="USDOE Office of Science (SC), Biological and Environmental Research (BER)",
-                    identifiers=[Identifier(type="CN_DOE", value="80478")],
+                    identifiers=[Identifier(type="CN_DOE", value="AC05-76RL01830")],
                 ),
             ]
 
@@ -391,7 +391,7 @@ class OSTIPIDProvider(PIDProvider):
                 Organization(
                     type="SPONSOR", 
                     name="USDOE Office of Science (SC), Biological and Environmental Research (BER)",
-                    identifiers=[Identifier(type="CN_DOE", value="80478")],
+                    identifiers=[Identifier(type="CN_DOE", value="AC05-76RL01830")],
                 ),
             ]
 
