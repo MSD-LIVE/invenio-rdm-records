@@ -256,20 +256,18 @@ class OSTIPIDProvider(PIDProvider):
                     current_app.logger.warning(f"Could not parse publication date: {e}")
 
             # Add organizations
-            # NOTE: OSTI requires at least one RESEARCHING organization, or it throws an error
+            # NOTE: OSTI requires at least one RESEARCHING organization, and ONE SPONSOR org
+            # and the SPONSOR org must also have a contract number with it
+            # or it throws an error
             elink_record.organizations = [
                 Organization(
                     type="RESEARCHING",
                     name="Pacific Northwest National Lab (United States)",
                 ),
-                Organization(type="SPONSOR", name="USDOE Office of Science (SC)"),
                 Organization(
-                    type="SPONSOR", name="Biological and Environmental Research (BER)"
-                ),
-                Organization(
-                    type="SPONSOR",
-                    name="Awarding Entity, Inc.",
-                    identifiers=[Identifier(type="CN_NONDOE", value="80478")],
+                    type="SPONSOR", 
+                    name="USDOE Office of Science (SC), Biological and Environmental Research (BER)",
+                    identifiers=[Identifier(type="CN_DOE", value="80478")],
                 ),
             ]
 
