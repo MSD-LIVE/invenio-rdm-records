@@ -42,6 +42,13 @@
                 "null"
               ]
             },
+            "enabled_for_index": {
+              "description": "field solely for adding ES facet support required due to RDM searchkit bug",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "kernel": {
               "description": "Kernel that notebook will run in.",
               "type": [

@@ -207,6 +207,7 @@ class FileExploration(Schema):
 
     KERNELS = ["Python", "R", "Julia"]
     enabled = fields.Bool(allow_none=True, load_default=None)
+    enabled_for_index = SanitizedUnicode(required=False)
     kernel = SanitizedUnicode(
         required=False,
         validate=validate.OneOf(
