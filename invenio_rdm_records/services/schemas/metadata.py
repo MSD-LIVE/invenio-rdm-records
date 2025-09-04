@@ -190,12 +190,9 @@ class FileExploration(Schema):
 
     @validates_schema
     def validate_kernel(self, data, **kwargs):
-        """Validates that kernel is selected if notebooks enabled and that github url is valid."""
-        kernel = data.get("kernel")
+        """Validates that github url is valid if notebooks enabled"""
         github_url = data.get("github_url")
         if data.get("enabled", False):
-            if kernel is None:
-                raise ValidationError("Kernel is required", field_name="kernel")
             if github_url:
                 error_message = "Invalid github url. Please make sure the url is correct and the repo is public."
                 try:
@@ -205,23 +202,8 @@ class FileExploration(Schema):
                 except requests.exceptions.RequestException:
                     raise ValidationError(error_message, field_name="github_url")
 
-    KERNELS = ["Python", "R", "Julia"]
     enabled = fields.Bool(allow_none=True, load_default=None)
     enabled_for_index = SanitizedUnicode(required=False)
-    kernel = SanitizedUnicode(
-        required=False,
-        validate=validate.OneOf(
-            choices=KERNELS,
-            error=_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS),
-        ),
-        error_messages={
-            # [] needed to mirror error message above
-            "required": [
-                _("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)
-            ]
-        },
-    )
-
     github_url = SanitizedUnicode(
         required=False, validate=_valid_url(_("Not a valid URL."))
     )

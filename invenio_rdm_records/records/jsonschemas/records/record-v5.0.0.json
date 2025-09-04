@@ -47,13 +47,6 @@
                 "null"
               ]
             },
-            "kernel": {
-              "description": "Kernel that notebook will run in.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
             "github_url": {
               "description": "Github url to notebook.",
               "type": [
