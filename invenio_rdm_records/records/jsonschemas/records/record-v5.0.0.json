@@ -31,7 +31,7 @@
         "msdlive_file_exploration": {
           "description": "Info allowing end users the ability to explore or subset this dataset via Jupyter notebooks.",
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "enabled": {
               "description": "Whether or not the to allow Jupyter exploration.",
