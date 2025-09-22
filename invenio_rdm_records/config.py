@@ -259,6 +259,12 @@ RDM_FACETS = {
         'ui': {
         }
     },
+    'msdlive_file_exploration_enabled': {
+        'facet': facets.msdlive_file_exploration_enabled,
+        'ui': {
+            'field': 'msdlive_file_exploration.enabled_for_index',
+        }
+    },
 #
 # MSDLIVE CHANGE END
 #

@@ -112,6 +112,12 @@ file_status = TermsFacet(
     },
 )
 
+msdlive_file_exploration_enabled = TermsFacet(
+    field="metadata.msdlive_file_exploration.enabled_for_index.keyword",
+    label=_("File Exploration"),
+    value_labels={"file_exploration_enabled": _("Enabled"), "file_exploration_disabled": _("Disabled")},
+)
+
 #
 # MSDLIVE CHANGE END
 #

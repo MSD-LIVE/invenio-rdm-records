@@ -190,13 +190,9 @@ class FileExploration(Schema):
 
     @validates_schema
     def validate_kernel(self, data, **kwargs):
-        """Validates that kernel is selected if notebooks status is enabled and that github url is valid."""
-        status = data.get("status")
-        kernel = data.get("kernel")
+        """Validates that github url is valid if notebooks enabled"""
         github_url = data.get("github_url")
-        if status == "enabled":
-            if kernel is None:
-                raise ValidationError("Kernel is required", field_name="kernel")
+        if data.get("enabled", False):
             if github_url:
                 error_message = "Invalid github url. Please make sure the url is correct and the repo is public."
                 try:
@@ -206,41 +202,18 @@ class FileExploration(Schema):
                 except requests.exceptions.RequestException:
                     raise ValidationError(error_message, field_name="github_url")
 
-    KERNELS = ["Python", "R", "Julia"]
-    STATUS = ["enabled", "disabled"]
-
-    # status = SanitizedUnicode(required=True,
-    status = SanitizedUnicode(
-        required=False,
-        validate=validate.OneOf(
-            choices=STATUS,
-            error=_("Invalid value. Choose one of {STATUS}.").format(STATUS=STATUS),
-        ),
-        error_messages={
-            # [] needed to mirror error message above
-            "required": [
-                _("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)
-            ]
-        },
-    )
-
-    kernel = SanitizedUnicode(
-        required=False,
-        validate=validate.OneOf(
-            choices=KERNELS,
-            error=_("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS),
-        ),
-        error_messages={
-            # [] needed to mirror error message above
-            "required": [
-                _("Invalid value. Choose one of {KERNELS}.").format(KERNELS=KERNELS)
-            ]
-        },
-    )
+    enabled = fields.Bool(allow_none=True, load_default=None)
+    enabled_for_index = SanitizedUnicode(required=False)
     github_url = SanitizedUnicode(
         required=False, validate=_valid_url(_("Not a valid URL."))
     )
+    datasync_arn = SanitizedUnicode(required=False)
 
+
+class ScienceThemeSchema(Schema):
+    """Schema for the MSD-LIVE science theme"""
+
+    science_theme = SanitizedUnicode()
 
 class SectorSchema(Schema):
     """Schema for the MSD-LIVE sector"""
@@ -490,6 +463,7 @@ class MetadataSchema(Schema):
     #
     # MSDLIVE CHANGE BEGIN - adding custom metadata
     #
+    msdlive_science_themes = fields.List(fields.Nested(ScienceThemeSchema))
     msdlive_sectors = fields.List(fields.Nested(SectorSchema))
     msdlive_scenarios = fields.List(fields.Nested(ScenarioSchema))
     msdlive_projects = fields.List(fields.Nested(ProjectSchema))
