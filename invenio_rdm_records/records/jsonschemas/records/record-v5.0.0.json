@@ -31,17 +31,17 @@
         "msdlive_file_exploration": {
           "description": "Info allowing end users the ability to explore or subset this dataset via Jupyter notebooks.",
           "type": "object",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
-            "status": {
+            "enabled": {
               "description": "Whether or not the to allow Jupyter exploration.",
               "type": [
-                "string",
+                "boolean",
                 "null"
               ]
             },
-            "kernel": {
-              "description": "Kernel that notebook will run in.",
+            "enabled_for_index": {
+              "description": "field solely for adding ES facet support required due to RDM searchkit bug",
               "type": [
                 "string",
                 "null"
@@ -49,6 +49,13 @@
             },
             "github_url": {
               "description": "Github url to notebook.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "datasync_arn": {
+              "description": "ARN to the datasync task for the draft.",
               "type": [
                 "string",
                 "null"
@@ -168,9 +175,9 @@
             }
           }
         },
-        "resource_type": {
-          "$ref": "local://records/definitions-v2.0.0.json#/resource_type"
-        },
+
+        "resource_type": {"$ref": "local://records/definitions-v2.0.0.json#/resource_type"},
+
         "creators": {
           "description": "Creators of the resource.",
           "type": "array",
