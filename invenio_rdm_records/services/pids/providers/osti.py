@@ -397,6 +397,9 @@ class OSTIPIDProvider(PIDProvider):
                     identifiers=[Identifier(type="CN_DOE", value="AC05-76RL01830")],
                 ),
             ]
+            elink_record.identifiers = [
+                Identifier(type="CN_DOE", value="AC05-76RL01830")
+            ]
 
             current_app.logger.debug(f"Record being sent to OSTI: {elink_record}")
             # Get the OSTI ID from the DOI
